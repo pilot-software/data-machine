@@ -35,35 +35,29 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 ## 🏥 API Endpoints
 
-### Core Search
+### Health & Monitoring
 ```bash
-# Unified search (both ICD-10 & ICD-11)
-GET /api/v1/search/unified?query=diabetes&limit=10
-
-# Specific code lookup (auto-detects version)
-GET /api/v1/code/E11.9    # ICD-10
-GET /api/v1/code/5A11     # ICD-11
-
-# Health check
-GET /api/v1/health
+GET /api/v1/health                    # Basic health check
+GET /api/v1/health/detailed           # Comprehensive health with metrics
+GET /api/v1/health/database           # Database health check
+GET /api/v1/health/redis              # Redis health check
 ```
 
-### ICD-10 Specific
+### Search & Autocomplete
 ```bash
-# Autocomplete
-GET /api/v1/autocomplete/icd10?query=diabetes&limit=10
-
-# Advanced search with chapter filtering
-GET /api/v1/enterprise/search/icd10/advanced?query=diabetes&chapter=E00-E89
+GET /api/v1/search/unified?query=diabetes&limit=10        # Search both ICD-10 & ICD-11
+GET /api/v1/search/icd10?query=diabetes&limit=10          # ICD-10 search
+GET /api/v1/autocomplete/icd10?query=diab&limit=10        # ICD-10 autocomplete
+GET /api/v1/code/{code}                                    # Get specific code details
 ```
 
-### ICD-11 Specific
+### Enterprise Features
 ```bash
-# Autocomplete
-GET /api/v1/autocomplete/icd11?query=diabetes&limit=10
-
-# Advanced search
-GET /api/v1/enterprise/search/icd11/advanced?query=diabetes&chapter=05
+GET /api/v1/enterprise/search/icd10/advanced?query=diabetes&limit=10&fuzzy_threshold=0.3
+GET /api/v1/enterprise/icd10/{code}/hierarchy              # Get code hierarchy
+POST /api/v1/enterprise/clinical/decision-support          # Clinical decision support
+GET /api/v1/enterprise/analytics/search-stats              # Search analytics
+GET /api/v1/enterprise/chapters                            # ICD-10 chapters list
 ```
 
 ## 🔧 Configuration
@@ -94,37 +88,55 @@ MAX_SUGGESTIONS=10
 
 ## 📈 Sample API Responses
 
-### Unified Search
+### Unified Search Response
 ```json
 {
   "query": "diabetes",
-  "total_results": 15,
+  "total_results": 3,
   "results": [
     {
-      "code": "E11.9",
-      "title": "Type 2 diabetes mellitus without complications",
-      "chapter": "E00-E89",
+      "code": "E0800",
+      "title": "Diabetes mellitus due to underlying condition...",
+      "chapter": "Diabetes mellitus due to underlying condition with hyperosmolarity",
       "version": "ICD-10",
-      "confidence": 0.9
-    },
-    {
-      "code": "5A11",
-      "title": "Type 2 diabetes mellitus",
-      "chapter": "05",
-      "version": "ICD-11",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "system": "ICD-10-CM"
     }
-  ]
+  ],
+  "query_time_ms": 168.51,
+  "systems_searched": ["ICD-10-CM"]
 }
 ```
 
-### Code Lookup
+### Autocomplete Response
 ```json
 {
-  "code": "E11.9",
-  "title": "Type 2 diabetes mellitus without complications",
-  "chapter": "Endocrine, nutritional and metabolic diseases (E00-E89)",
-  "version": "ICD-10"
+  "suggestions": [
+    {
+      "code": "E0800",
+      "term": "Diabetes mellitus due to underlying condition...",
+      "chapter": "Diabetes mellitus due to underlying condition with hyperosmolarity",
+      "confidence": 0.8
+    }
+  ],
+  "total_count": 5,
+  "query_time_ms": 2.49
+}
+```
+
+### Advanced Search Response
+```json
+{
+  "results": [...],
+  "total_count": 3,
+  "query_time_ms": 15.89,
+  "search_metadata": {
+    "exact_matches": 0,
+    "prefix_matches": 3,
+    "fuzzy_matches": 0,
+    "chapter_filter": null,
+    "fuzzy_threshold": 0.3
+  }
 }
 ```
 
