@@ -187,16 +187,25 @@ data-machine/
 
 ### Local Development
 ```bash
-python unified_api.py
+./start.sh
+```
+
+### Docker Deployment
+```bash
+# Start all services (app, postgres, redis)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop services
+docker-compose down
 ```
 
 ### Production
 ```bash
 # Using uvicorn
-uvicorn unified_api:app --host 0.0.0.0 --port 8001
-
-# Using Docker
-docker-compose up -d
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 4
 ```
 
 ## 📊 Data Sources
