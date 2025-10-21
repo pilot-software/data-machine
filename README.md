@@ -190,21 +190,9 @@ data-machine/
 ./start.sh
 ```
 
-### Docker Deployment
-```bash
-# Start all services (app, postgres, redis)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f app
-
-# Stop services
-docker-compose down
-```
-
 ### Production
 ```bash
-# Using uvicorn
+# Using uvicorn with multiple workers
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 4
 ```
 
