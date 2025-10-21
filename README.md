@@ -6,7 +6,7 @@ Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) w
 
 ```bash
 # Clone and setup
-git clone <repository>
+git clone https://github.com/pilot-software/data-machine.git
 cd data-machine
 
 # Install dependencies
@@ -16,10 +16,16 @@ pip install -r requirements.txt
 python setup_full_db.py
 
 # Start service
-python unified_api.py
+./run.sh
+# OR
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
 **Service runs on**: `http://localhost:8001`
+
+**API Documentation (Swagger)**: `http://localhost:8001/docs`
+
+**Alternative API Docs (ReDoc)**: `http://localhost:8001/redoc`
 
 ## 📊 Database Coverage
 
