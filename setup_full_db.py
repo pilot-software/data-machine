@@ -50,6 +50,9 @@ async def setup_database():
                 short_desc TEXT,
                 chapter TEXT,
                 category VARCHAR(10),
+                parent_code VARCHAR(20),
+                active BOOLEAN DEFAULT true,
+                billable BOOLEAN DEFAULT true,
                 search_vector tsvector,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
