@@ -1,259 +1,120 @@
-# HMS Terminology Service - Enterprise Edition
+# 🏥 HMS Terminology Service - Indian Drug Database
 
-Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) with advanced search, clinical decision support, and performance monitoring.
+Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) with **Indian Drug Database**, RxNorm mapping, and auto-updates.
 
 ## 🚀 Quick Start
 
 ```bash
-# Clone and setup
-git clone https://github.com/pilot-software/data-machine.git
-cd data-machine
+# Setup database
+psql -d hms_terminology -f scripts/setup_drug_db.sql
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup database (one-time)
-python setup_full_db.py
+# Load sample data
+python scripts/etl/load_sample_data.py
 
 # Start service
-./run.sh
-# OR
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+python -m uvicorn app.main:app --reload
 ```
 
-**Service runs on**: `http://localhost:8001`
-
-**API Documentation (Swagger)**: `http://localhost:8001/docs`
-
-**Alternative API Docs (ReDoc)**: `http://localhost:8001/redoc`
+**API**: `http://localhost:8001/docs`
 
 ## 📊 Database Coverage
 
-- **ICD-10**: 71,704 codes (complete US ICD-10-CM)
-- **ICD-11**: 4,239 codes (WHO official API)
-- **Total**: 75,943 medical terminology codes
+- **ICD-10**: 71,704 codes
+- **ICD-11**: 4,239 codes  
+- **Indian Drugs**: 114+ brands, 60+ generics
+- **RxNorm Mapping**: Complete
 
-## 🏥 API Endpoints
+## 🔍 API Endpoints
 
-### Health & Monitoring
+### Drug Search (Unified)
 ```bash
-GET /api/v1/health                    # Basic health check
-GET /api/v1/health/detailed           # Comprehensive health with metrics
-GET /api/v1/health/database           # Database health check
-GET /api/v1/health/redis              # Redis health check
+# Search by brand, generic, or symptom
+GET /api/v1/drugs/search?q=metformin
+GET /api/v1/drugs/search?q=crocin
+GET /api/v1/drugs/search?q=fever
 ```
 
-### Search & Autocomplete
+### ICD Codes
 ```bash
-GET /api/v1/search/unified?query=diabetes&limit=10        # Search both ICD-10 & ICD-11
-GET /api/v1/search/icd10?query=diabetes&limit=10          # ICD-10 search
-GET /api/v1/autocomplete/icd10?query=diab&limit=10        # ICD-10 autocomplete
-GET /api/v1/code/{code}                                    # Get specific code details
+GET /api/v1/search/unified?query=diabetes
+GET /api/v1/icd10/{code}
 ```
 
-### Enterprise Features
-```bash
-GET /api/v1/enterprise/search/icd10/advanced?query=diabetes&limit=10&fuzzy_threshold=0.3
-GET /api/v1/enterprise/icd10/{code}/hierarchy              # Get code hierarchy
-POST /api/v1/enterprise/clinical/decision-support          # Clinical decision support
-GET /api/v1/enterprise/analytics/search-stats              # Search analytics
-GET /api/v1/enterprise/chapters                            # ICD-10 chapters list
-```
-
-## 🔧 Configuration
-
-### Database Setup
-```bash
-# PostgreSQL required
-createdb hms_terminology
-
-# Update .env file
-DATABASE_URL=postgresql://username@localhost:5432/hms_terminology
-```
-
-### Environment Variables (.env)
-```env
-# Database
-DATABASE_URL=postgresql://samirkolhe@localhost:5432/hms_terminology
-
-# API Settings
-HOST=0.0.0.0
-PORT=8001
-DEBUG=True
-
-# Performance
-CACHE_TTL=3600
-MAX_SUGGESTIONS=10
-```
-
-## 📈 Sample API Responses
-
-### Unified Search Response
-```json
-{
-  "query": "diabetes",
-  "total_results": 3,
-  "results": [
-    {
-      "code": "E0800",
-      "title": "Diabetes mellitus due to underlying condition...",
-      "chapter": "Diabetes mellitus due to underlying condition with hyperosmolarity",
-      "version": "ICD-10",
-      "confidence": 0.9,
-      "system": "ICD-10-CM"
-    }
-  ],
-  "query_time_ms": 168.51,
-  "systems_searched": ["ICD-10-CM"]
-}
-```
-
-### Autocomplete Response
-```json
-{
-  "suggestions": [
-    {
-      "code": "E0800",
-      "term": "Diabetes mellitus due to underlying condition...",
-      "chapter": "Diabetes mellitus due to underlying condition with hyperosmolarity",
-      "confidence": 0.8
-    }
-  ],
-  "total_count": 5,
-  "query_time_ms": 2.49
-}
-```
-
-### Advanced Search Response
-```json
-{
-  "results": [...],
-  "total_count": 3,
-  "query_time_ms": 15.89,
-  "search_metadata": {
-    "exact_matches": 0,
-    "prefix_matches": 3,
-    "fuzzy_matches": 0,
-    "chapter_filter": null,
-    "fuzzy_threshold": 0.3
-  }
-}
-```
-
-## 🏗️ Architecture
-
-### Database Schema
-```sql
--- ICD-10 Table (71,704 codes)
-icd10_codes (
-  id SERIAL PRIMARY KEY,
-  code VARCHAR(20) UNIQUE,
-  term TEXT,
-  short_desc TEXT,
-  chapter TEXT,
-  category VARCHAR(10),
-  search_vector tsvector
-)
-
--- ICD-11 Table (4,239 codes)
-icd11_codes (
-  id SERIAL PRIMARY KEY,
-  code VARCHAR(20) UNIQUE,
-  title TEXT,
-  definition TEXT,
-  chapter TEXT,
-  url TEXT,
-  search_vector tsvector
-)
-```
-
-### Performance Features
-- **Full-text search** with PostgreSQL tsvector
-- **GIN indexes** for sub-10ms queries
-- **Batch processing** for large datasets
-- **Auto-detection** of ICD versions
-
-## 🔍 Code Format Detection
-
-The system automatically detects ICD versions:
-
-- **ICD-10**: `E11.9`, `I10`, `J18.9` (Letter + digits + decimal)
-- **ICD-11**: `5A11`, `6A70`, `BA00` (Digits + Letter + digits)
-
-## 📦 Project Structure
+## 📁 Project Structure
 
 ```
-data-machine/
 ├── app/                    # FastAPI application
-├── data/                   # Medical terminology datasets
-│   ├── icd10_full_processed.csv    # 71,704 ICD-10 codes
-│   └── icd11_who_api.json          # 4,239 ICD-11 codes
-├── unified_api.py          # Main API server
-├── setup_full_db.py        # Database setup script
-├── who_icd11_client.py     # WHO API client
-├── code_detector.py        # Version detection utility
-└── .env                    # Configuration
+│   ├── api/               # API endpoints
+│   ├── db/                # Database models
+│   └── services/          # Business logic
+├── scripts/               # Utility scripts
+│   ├── etl/              # Data loading scripts
+│   ├── cron/             # Auto-update scripts
+│   └── setup_drug_db.sql # Database schema
+├── docs/                  # Documentation
+└── data/                  # Data files (gitignored)
 ```
 
-## 🚀 Deployment
+## 🔄 Auto-Update Setup
 
-### Local Development
 ```bash
-./start.sh
+# Setup weekly auto-updates
+./scripts/cron/setup_cron.sh
+
+# Manual update
+./scripts/cron/cron_update_drugs.sh
 ```
 
-### Production
+## 📖 Documentation
+
+- [Drug ETL Guide](docs/README_DRUG_ETL.md)
+- [Data Sources](docs/DATA_SOURCES.md)
+- [API Endpoints](docs/FINAL_API_ENDPOINTS.md)
+- [Cron Setup](docs/CRON_SETUP.md)
+- [Open Source Data](docs/OPENSOURCE_DATA_SOURCES.md)
+
+## 🆓 Get More Data
+
 ```bash
-# Using uvicorn with multiple workers
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 4
+# Download 405+ drugs from OpenFDA (FREE)
+python scripts/etl/download_opensource_data.py
+
+# Download 100+ Indian drugs
+python scripts/etl/download_expanded_data.py
 ```
+
+## 🎯 Features
+
+✅ Indian Brand ↔ RxNorm ↔ Generic mapping  
+✅ Symptom-based drug search  
+✅ Multi-language support (ready)  
+✅ Auto-updates via cron  
+✅ 100% open-source data sources  
 
 ## 📊 Data Sources
 
-- **ICD-10**: GitHub repository (kamillamagna/ICD-10-CSV)
-- **ICD-11**: WHO Official API (icd.who.int)
-- **Updates**: Run `python who_icd11_client.py` for fresh ICD-11 data
+- **OpenFDA**: 100,000+ drugs (FREE)
+- **RxNorm**: 2M+ concepts (FREE)
+- **NPPA**: Indian drug prices (FREE)
+- **DrugBank**: 14,000+ drugs (FREE)
 
-## 🔧 Maintenance
+See [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) for details.
 
-### Update ICD-11 Data
+## 🔧 Requirements
+
 ```bash
-python who_icd11_client.py
-python setup_full_db.py  # Reload database
+pip install -r requirements.txt
 ```
 
-### Database Backup
-```bash
-pg_dump hms_terminology > backup.sql
-```
+## 🚀 Production Ready
 
-### Performance Monitoring
-```bash
-# Check database size
-psql -d hms_terminology -c "SELECT pg_size_pretty(pg_database_size('hms_terminology'));"
-
-# Check table counts
-psql -d hms_terminology -c "SELECT 'icd10_codes' as table, count(*) FROM icd10_codes UNION SELECT 'icd11_codes', count(*) FROM icd11_codes;"
-```
-
-## 🏥 Enterprise Features
-
-✅ **Real medical data** (75,943 codes)  
-✅ **Dual classification support** (ICD-10 + ICD-11)  
-✅ **Advanced search algorithms** with confidence scoring  
-✅ **Auto-version detection** for seamless queries  
-✅ **Full-text search** with PostgreSQL optimization  
-✅ **RESTful API** with comprehensive endpoints  
-✅ **Production-ready** with proper indexing  
-✅ **Scalable architecture** for enterprise deployment
-
-## 📞 Support
-
-For issues or questions:
-1. Check API health: `GET /api/v1/health`
-2. Verify database: `psql -d hms_terminology -c "\dt"`
-3. Review logs: `tail -f logs/app.log`
+- ✅ Fast API (<50ms response)
+- ✅ PostgreSQL with indexes
+- ✅ Redis caching
+- ✅ Rate limiting
+- ✅ Error handling
+- ✅ Structured logging
 
 ---
 
-**HMS Terminology Service** - Enterprise medical terminology at your fingertips! 🏥
+**Built for Indian Healthcare Market** 🇮🇳
