@@ -4,32 +4,28 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual Environment
 venv/
 env/
-ENV/
+*.egg-info/
 
-# Environment Variables
+# Database
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Data files (too large for git)
+data/real/
+data/opensource/
+data/*.csv
+data/*.json
+data/*.tsv
+
+# Environment
 .env
 .env.local
-.env.production
 
 # IDE
 .vscode/
@@ -37,21 +33,11 @@ ENV/
 *.swp
 *.swo
 
-# Logs
-logs/
-*.log
-
-# Database
-*.db
-*.sqlite3
-
-# Cache
-.cache/
-.pytest_cache/
-
 # OS
 .DS_Store
 Thumbs.db
 
-# Docker
-.dockerignore
+# Temporary
+tmp/
+temp/
+*.tmp

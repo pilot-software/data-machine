@@ -15,6 +15,7 @@ from app.services.redis_cluster import redis_cluster
 from app.api.terminology import router as terminology_router
 from app.api.icd10 import router as icd10_router
 from app.api.enterprise import router as enterprise_router
+from app.api.drugs import router as drugs_router
 
 # Setup structured logging
 setup_logging(settings.log_level.upper())
@@ -24,7 +25,7 @@ logger = get_logger('app.main')
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="FastAPI service for HMS terminology management with SNOMED, ICD-10, and LOINC integration",
+    description="HMS Terminology Service - ICD-10, ICD-11, Indian Drug Database with RxNorm mapping",
     debug=settings.debug
 )
 
@@ -69,6 +70,7 @@ async def service_exception_handler(request: Request, exc: ServiceUnavailableErr
 app.include_router(terminology_router)
 app.include_router(icd10_router)
 app.include_router(enterprise_router)
+app.include_router(drugs_router)  # Minimal unified drug API
 
 @app.on_event("startup")
 async def startup_event():
