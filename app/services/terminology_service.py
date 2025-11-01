@@ -104,7 +104,8 @@ class TerminologyService:
     async def get_code_details(self, code: str) -> Dict[str, Any]:
         """Get detailed information for a specific code with full hierarchy"""
         start_time = time.time()
-        cache_key = f"icd10:details:{code}"
+        normalized_code = code.replace('.', '').replace('-', '')
+        cache_key = f"icd10:details:{normalized_code}"
         
         # Check cache
         try:
@@ -117,7 +118,7 @@ class TerminologyService:
         
         try:
             async with AsyncICD10Repository() as repo:
-                main_code = await repo.find_by_code(code)
+                main_code = await repo.find_by_code(normalized_code)
                 if not main_code:
                     return {'error': 'Code not found', 'code': code}
                 
@@ -364,66 +365,45 @@ class TerminologyService:
     async def batch_code_lookup(self, codes: List[str]) -> Dict[str, Dict[str, Any]]:
         """Batch lookup for multiple ICD-10 codes"""
         start_time = time.time()
-        
-        # Check cache for all codes
-        cache_keys = [f"icd10:details:{code}" for code in codes]
-        cached_results = {}  # Simplified - skip batch cache for now
-        
-        # Identify codes that need lookup
-        missing_codes = []
         results = {}
+        cache_hits = 0
         
         for code in codes:
-            cache_key = f"icd10:details:{code}"
-            if cache_key in cached_results:
-                results[code] = cached_results[cache_key]
-            else:
-                missing_codes.append(code)
-        
-        # Lookup missing codes concurrently
-        if missing_codes:
+            normalized_code = code.replace('.', '').replace('-', '')
+            cache_key = f"icd10:details:{normalized_code}"
+            try:
+                cached = await self.cache_service.get(cache_key)
+                if cached:
+                    results[code] = cached
+                    cache_hits += 1
+                    continue
+            except Exception:
+                pass
+            
             try:
                 async with AsyncICD10Repository() as repo:
-                    lookup_tasks = [repo.find_by_code(code) for code in missing_codes]
-                    lookup_results = await asyncio.gather(*lookup_tasks, return_exceptions=True)
-                    
-                    # Process lookup results
-                    cache_batch = {}
-                    for code, result in zip(missing_codes, lookup_results):
-                        if isinstance(result, Exception):
-                            logger.error(f"Lookup failed for code {code}: {result}")
-                            results[code] = {'error': 'Lookup failed', 'code': code}
-                        elif result:
-                            formatted_result = {
-                                'code': result.code,
-                                'term': result.term,
-                                'chapter': result.chapter,
-                                'parent_code': result.parent_code,
-                                'active': result.active
-                            }
-                            results[code] = formatted_result
-                            cache_batch[f"icd10:details:{code}"] = formatted_result
-                        else:
-                            results[code] = {'error': 'Code not found', 'code': code}
-                    
-                    # Cache new results
-                    if cache_batch:
-                        try:
-                            for key, value in cache_batch.items():
-                                await self.cache_service.set(key, value, ttl=self.cache_ttl)
-                        except Exception as e:
-                            logger.warning(f"Batch cache set failed: {e}")
-                            
+                    result = await repo.find_by_code(normalized_code)
+                    if result:
+                        formatted_result = {
+                            'code': result.code,
+                            'term': result.term,
+                            'chapter': result.chapter,
+                            'parent_code': result.parent_code,
+                            'active': result.active
+                        }
+                        results[code] = formatted_result
+                        await self.cache_service.set(cache_key, formatted_result, ttl=self.cache_ttl)
+                    else:
+                        results[code] = {'error': 'Code not found', 'code': code}
             except Exception as e:
-                logger.error(f"Batch lookup error: {e}")
-                for code in missing_codes:
-                    results[code] = {'error': 'Service unavailable', 'code': code}
+                logger.error(f"Lookup failed for code {code}: {e}")
+                results[code] = {'error': 'Lookup failed', 'code': code}
         
         return {
             'results': results,
             'total_codes': len(codes),
-            'cache_hits': len(codes) - len(missing_codes),
-            'cache_misses': len(missing_codes),
+            'cache_hits': cache_hits,
+            'cache_misses': len(codes) - cache_hits,
             'query_time_ms': round((time.time() - start_time) * 1000, 2)
         }
     

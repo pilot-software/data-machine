@@ -1,0 +1,338 @@
+{
+	"info": {
+		"name": "HMS Terminology Service API",
+		"description": "Complete API collection for HMS Terminology Service with ICD-10 and ICD-11 support",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8001",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health & Monitoring",
+			"item": [
+				{
+					"name": "Basic Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "health"]
+						}
+					}
+				},
+				{
+					"name": "Detailed Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health/detailed",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "health", "detailed"]
+						}
+					}
+				},
+				{
+					"name": "Database Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health/database",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "health", "database"]
+						}
+					}
+				},
+				{
+					"name": "Redis Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/health/redis",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "health", "redis"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Search & Autocomplete",
+			"item": [
+				{
+					"name": "Unified Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/search/unified?query=diabetes&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "search", "unified"],
+							"query": [
+								{"key": "query", "value": "diabetes"},
+								{"key": "limit", "value": "10"}
+							]
+						}
+					}
+				},
+				{
+					"name": "ICD-10 Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/search/icd10?query=diabetes&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "search", "icd10"],
+							"query": [
+								{"key": "query", "value": "diabetes"},
+								{"key": "limit", "value": "10"}
+							]
+						}
+					}
+				},
+				{
+					"name": "ICD-10 Search with Chapter",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/search/icd10?query=diabetes&limit=10&chapter=endocrine",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "search", "icd10"],
+							"query": [
+								{"key": "query", "value": "diabetes"},
+								{"key": "limit", "value": "10"},
+								{"key": "chapter", "value": "endocrine"}
+							]
+						}
+					}
+				},
+				{
+					"name": "ICD-10 Autocomplete",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/autocomplete/icd10?query=diab&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "autocomplete", "icd10"],
+							"query": [
+								{"key": "query", "value": "diab"},
+								{"key": "limit", "value": "10"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Code Details - E08319",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/code/E08319",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "code", "E08319"]
+						}
+					}
+				},
+				{
+					"name": "Get Code Details - E11.9",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/code/E11.9",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "code", "E11.9"]
+						}
+					}
+				},
+				{
+					"name": "Get Code Details - I10",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/code/I10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "code", "I10"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Enterprise Features",
+			"item": [
+				{
+					"name": "Advanced ICD-10 Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/enterprise/search/icd10/advanced?query=diabetes&limit=10&fuzzy_threshold=0.3",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "enterprise", "search", "icd10", "advanced"],
+							"query": [
+								{"key": "query", "value": "diabetes"},
+								{"key": "limit", "value": "10"},
+								{"key": "fuzzy_threshold", "value": "0.3"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Code Hierarchy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/enterprise/icd10/E08319/hierarchy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "enterprise", "icd10", "E08319", "hierarchy"]
+						}
+					}
+				},
+				{
+					"name": "Clinical Decision Support",
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"symptoms\": [\"fever\", \"cough\", \"fatigue\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/enterprise/clinical/decision-support",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "enterprise", "clinical", "decision-support"]
+						}
+					}
+				},
+				{
+					"name": "Search Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/enterprise/analytics/search-stats",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "enterprise", "analytics", "search-stats"]
+						}
+					}
+				},
+				{
+					"name": "ICD-10 Chapters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/enterprise/chapters",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "enterprise", "chapters"]
+						}
+					}
+				},
+				{
+					"name": "Batch Code Lookup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"codes\": [\"E11.9\", \"I10\", \"J18.9\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/enterprise/batch/codes",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "enterprise", "batch", "codes"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Common Examples",
+			"item": [
+				{
+					"name": "Search Hypertension",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/search/icd10?query=hypertension&limit=5",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "search", "icd10"],
+							"query": [
+								{"key": "query", "value": "hypertension"},
+								{"key": "limit", "value": "5"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Pneumonia",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/search/unified?query=pneumonia&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "search", "unified"],
+							"query": [
+								{"key": "query", "value": "pneumonia"},
+								{"key": "limit", "value": "10"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Autocomplete Heart",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/autocomplete/icd10?query=heart&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "autocomplete", "icd10"],
+							"query": [
+								{"key": "query", "value": "heart"},
+								{"key": "limit", "value": "10"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Cancer",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/search/icd10?query=cancer&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "search", "icd10"],
+							"query": [
+								{"key": "query", "value": "cancer"},
+								{"key": "limit", "value": "10"}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

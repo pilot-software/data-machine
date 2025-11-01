@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Body, Depends
 from typing import List, Optional
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 from app.core.service_factory import get_cache_service, get_repository
 from app.services.terminology_service import TerminologyService
 
@@ -149,3 +149,21 @@ async def get_icd10_chapters():
     ]
     
     return {"chapters": chapters}
+
+
+class BatchCodeRequest(BaseModel):
+    codes: List[str] = Field(..., min_items=1, max_items=100, description="List of ICD-10 codes")
+
+
+@router.post("/batch/codes")
+async def batch_code_lookup(request: BatchCodeRequest):
+    """Batch lookup for multiple ICD-10 codes"""
+    try:
+        terminology_service = get_terminology_service()
+        result = await terminology_service.batch_code_lookup(request.codes)
+        return result
+        
+    except ValidationError as e:
+        handle_validation_error(e)
+    except Exception as e:
+        handle_service_error(e, "Batch code lookup")

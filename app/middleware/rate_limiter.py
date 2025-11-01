@@ -28,10 +28,10 @@ class AdvancedRateLimiter:
         # Rate limit configurations by tier
         self.rate_limits = {
             RateLimitTier.ANONYMOUS: {
-                'requests_per_minute': 60,
-                'requests_per_hour': 1000,
-                'burst_capacity': 10,
-                'token_refill_rate': 1.0  # tokens per second
+                'requests_per_minute': 1000,
+                'requests_per_hour': 10000,
+                'burst_capacity': 100,
+                'token_refill_rate': 10.0  # tokens per second
             },
             RateLimitTier.AUTHENTICATED: {
                 'requests_per_minute': 200,
