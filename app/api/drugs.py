@@ -5,6 +5,8 @@ Minimal Drug API - ONE unified endpoint
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 from app.db.database import SessionLocal
+from app.services.search_logger import search_logger
+import time
 
 router = APIRouter(prefix="/api/v1/drugs", tags=["drugs"])
 
@@ -15,6 +17,7 @@ async def search_drugs(q: str = Query(..., min_length=2)):
     ONE endpoint for everything: brand, generic, symptom search
     Returns complete data in single response
     """
+    start_time = time.time()
     db = SessionLocal()
     try:
         # Simple unified query
@@ -92,6 +95,10 @@ async def search_drugs(q: str = Query(..., min_length=2)):
                 "symptoms": first_drug['symptoms'],
                 "total_brands": len(drugs)
             }
+        
+        # Log search
+        response_time = (time.time() - start_time) * 1000
+        search_logger.log_search(q, len(drugs), response_time)
         
         return response
         

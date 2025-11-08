@@ -140,6 +140,46 @@ CREATE TRIGGER generic_search_vector_update
     BEFORE INSERT OR UPDATE ON generic_ingredients
     FOR EACH ROW EXECUTE FUNCTION update_generic_search_vector();
 
+-- 6. Ayushman Bharat HBP Procedures
+CREATE TABLE IF NOT EXISTS abhbp_procedures (
+    procedure_id SERIAL PRIMARY KEY,
+    package_code VARCHAR(20) UNIQUE NOT NULL,
+    package_name TEXT NOT NULL,
+    specialty VARCHAR(100),
+    procedure_type TEXT,
+    base_rate DECIMAL(10,2),
+    icd10_codes JSONB DEFAULT '[]',
+    cpt_equivalent VARCHAR(20),
+    hbp_category VARCHAR(50),
+    empanelment_required BOOLEAN DEFAULT TRUE,
+    preauth_required BOOLEAN DEFAULT FALSE,
+    search_vector TSVECTOR,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_abhbp_package_code ON abhbp_procedures(package_code);
+CREATE INDEX idx_abhbp_specialty ON abhbp_procedures(specialty);
+CREATE INDEX idx_abhbp_search ON abhbp_procedures USING gin(search_vector);
+CREATE INDEX idx_abhbp_icd10 ON abhbp_procedures USING gin(icd10_codes);
+
+-- Update search vector for AB-HBP
+CREATE OR REPLACE FUNCTION update_abhbp_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.search_vector := 
+        setweight(to_tsvector('english', COALESCE(NEW.package_code, '')), 'A') ||
+        setweight(to_tsvector('english', COALESCE(NEW.package_name, '')), 'A') ||
+        setweight(to_tsvector('english', COALESCE(NEW.specialty, '')), 'B');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER abhbp_search_vector_update
+    BEFORE INSERT OR UPDATE ON abhbp_procedures
+    FOR EACH ROW EXECUTE FUNCTION update_abhbp_search_vector();
+
 -- Sample data
 INSERT INTO generic_ingredients (rxnorm_cui, ingredient_name, atc_code, therapeutic_class) VALUES
 ('202433', 'Acetaminophen', 'N02BE01', 'Analgesic/Antipyretic'),

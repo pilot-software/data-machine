@@ -16,6 +16,7 @@ from app.api.terminology import router as terminology_router
 from app.api.icd10 import router as icd10_router
 from app.api.enterprise import router as enterprise_router
 from app.api.drugs import router as drugs_router
+from app.api.abhbp import router as abhbp_router
 
 # Setup structured logging
 setup_logging(settings.log_level.upper())
@@ -71,6 +72,7 @@ app.include_router(terminology_router)
 app.include_router(icd10_router)
 app.include_router(enterprise_router)
 app.include_router(drugs_router)  # Minimal unified drug API
+app.include_router(abhbp_router)  # Ayushman Bharat HBP
 
 @app.on_event("startup")
 async def startup_event():

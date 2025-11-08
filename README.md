@@ -5,14 +5,14 @@ Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) w
 ## 🚀 Quick Start
 
 ```bash
-# Setup database
-psql -d hms_terminology -f scripts/setup_drug_db.sql
+# 1. First-time setup
+./setup.sh
 
-# Load sample data
-python scripts/etl/load_sample_data.py
+# 2. Download AB-HBP data (optional)
+python scripts/etl/download_abhbp_data.py
 
-# Start service
-python -m uvicorn app.main:app --reload
+# 3. Start service
+./start.sh
 ```
 
 **API**: `http://localhost:8001/docs`
