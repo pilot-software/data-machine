@@ -261,7 +261,7 @@ Glucophage,Metformin,Merck,500mg,Tablet,35.00,10 tablets
 
 if __name__ == "__main__":
     # Configuration
-    DATABASE_URL = "postgresql://user:password@localhost:5432/hms_terminology"
+    DATABASE_URL = "postgresql://user:password@localhost:5432/medical_library"
     
     # Run ETL
     etl = DrugETL(DATABASE_URL)

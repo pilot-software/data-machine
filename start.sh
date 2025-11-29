@@ -27,8 +27,8 @@ fi
 
 # Drop and recreate database
 echo "📊 Recreating database..."
-psql -d postgres -c "DROP DATABASE IF EXISTS hms_terminology;" > /dev/null 2>&1
-psql -d postgres -c "CREATE DATABASE hms_terminology;" > /dev/null 2>&1
+psql -d postgres -c "DROP DATABASE IF EXISTS medical_library;" > /dev/null 2>&1
+psql -d postgres -c "CREATE DATABASE medical_library;" > /dev/null 2>&1
 
 echo "⚙️  Setting up database..."
 $PYTHON_CMD scripts/setup_full_db.py
@@ -38,7 +38,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "💊 Setting up drug tables..."
-psql -d hms_terminology -f scripts/setup_drug_db.sql > /dev/null 2>&1
+psql -d medical_library -f scripts/setup_drug_db.sql > /dev/null 2>&1
 
 echo "📦 Loading sample drug data..."
 $PYTHON_CMD scripts/etl/load_sample_data.py
@@ -63,7 +63,7 @@ else
 fi
 
 echo "🏥 Loading AB-HBP data..."
-psql -d hms_terminology -c "ALTER TABLE abhbp_procedures ALTER COLUMN procedure_type TYPE TEXT;" > /dev/null 2>&1
+psql -d medical_library -c "ALTER TABLE abhbp_procedures ALTER COLUMN procedure_type TYPE TEXT;" > /dev/null 2>&1
 if [ -f "data/abhbp_packages.csv" ]; then
     $PYTHON_CMD scripts/etl/load_abhbp_data.py
     if [ $? -eq 0 ]; then

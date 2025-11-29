@@ -7,7 +7,7 @@ echo "🏥 Setting up Ayushman Bharat HBP..."
 
 # 1. Setup database
 echo "📊 Creating database tables..."
-psql -d hms_terminology -f scripts/setup_drug_db.sql
+psql -d medical_library -f scripts/setup_drug_db.sql
 
 # 2. Download data
 echo "📥 Downloading AB-HBP data..."

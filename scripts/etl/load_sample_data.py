@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database connection
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://samirkolhe@localhost:5432/hms_terminology')
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://samirkolhe@localhost:5432/medical_library')
 
 # RxNorm mapping for common generics
 RXNORM_MAPPING = {

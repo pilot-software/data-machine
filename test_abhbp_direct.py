@@ -6,7 +6,7 @@ import os
 
 conn = psycopg2.connect(
     host=os.getenv("DB_HOST", "localhost"),
-    database=os.getenv("DB_NAME", "hms_terminology"),
+    database=os.getenv("DB_NAME", "medical_library"),
     user=os.getenv("DB_USER", "postgres"),
     password=os.getenv("DB_PASSWORD", "postgres")
 )

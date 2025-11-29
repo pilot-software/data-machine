@@ -8,7 +8,7 @@ echo "🚀 Starting Drug Database ETL Pipeline..."
 # Setup database schema (first time only)
 if [ "$1" == "--setup" ]; then
     echo "📊 Setting up database schema..."
-    psql -d hms_terminology -f setup_drug_db.sql
+    psql -d medical_library -f setup_drug_db.sql
     echo "✅ Schema created"
 fi
 

@@ -132,8 +132,8 @@ class DatabasePartitionManager:
         
         # Create read replica connection strings
         read_replicas = [
-            "postgresql+asyncpg://readonly_user:password@replica1:5432/hms_terminology",
-            "postgresql+asyncpg://readonly_user:password@replica2:5432/hms_terminology"
+            "postgresql+asyncpg://readonly_user:password@replica1:5432/medical_library",
+            "postgresql+asyncpg://readonly_user:password@replica2:5432/medical_library"
         ]
         
         return {

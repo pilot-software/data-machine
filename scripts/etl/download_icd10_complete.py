@@ -4,7 +4,7 @@ import requests
 import psycopg2
 import time
 
-DB_URL = "postgresql://samirkolhe@localhost:5432/hms_terminology"
+DB_URL = "postgresql://samirkolhe@localhost:5432/medical_library"
 CLIENT_ID = "f027b85b-e451-4a03-871a-d5e96778ffc1_9056b59a-973c-4e09-9190-e1a18a88f68b"
 CLIENT_SECRET = "hTgKi4F3Nh2kfNRt29xlGOIlkXv60pQBosynSy34LWM="
 TOKEN_URL = "https://icdaccessmanagement.who.int/connect/token"
