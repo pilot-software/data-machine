@@ -29,25 +29,53 @@ cd data-machine
 - **Indian Drugs**: 114+ brands, 60+ generics
 - **RxNorm Mapping**: Complete
 
-## 🔍 API Endpoints (Consolidated)
+## 🔍 API Endpoints
 
-### ICD-10/11 Search (All-in-One)
+### 🔐 Authentication Required
+
+All API endpoints require an API key in the header:
+
 ```bash
-# Unified search with all features
-GET /api/v1/icd10/search?q=diabetes&systems=icd10,icd11
-GET /api/v1/icd10/search?q=dia&autocomplete=true
-GET /api/v1/icd10/{code}?hierarchy=true
+X-API-Key: dev-key-123
 ```
 
-### Drug Search (Unified)
+**Available API Keys** (from .env):
+- `dev-key-123` - Development
+- `prod-key-xyz` - Production
+- `frontend-key-abc` - Frontend
+
+### ICD-10/11 Search
+```bash
+# Unified search
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/icd/search?q=diabetes"
+
+# With autocomplete
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/icd/search?q=dia&autocomplete=true"
+
+# Get code details
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/icd/E11?hierarchy=true"
+```
+
+### Drug Search
 ```bash
 # Search by brand, generic, or symptom
-GET /api/v1/drugs/search?q=metformin
-GET /api/v1/drugs/search?q=crocin
-GET /api/v1/drugs/search?q=fever
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/drugs/search?q=metformin"
+
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/drugs/search?q=fever"
 ```
 
-**Total Endpoints**: 11 (reduced from 20+)
+### Health Check (No Auth)
+```bash
+# Public endpoint
+curl http://localhost:8001/api/v1/health
+```
+
+**Total Endpoints**: 11 organized by domain
 **See**: `API_QUICK_REFERENCE.md` for complete list
 
 ## 📁 Project Structure
@@ -100,9 +128,10 @@ python scripts/etl/download_expanded_data.py
 
 ✅ Indian Brand ↔ RxNorm ↔ Generic mapping  
 ✅ Symptom-based drug search  
-✅ Multi-language support (ready)  
+✅ API Key authentication  
 ✅ Auto-updates via cron  
 ✅ 100% open-source data sources  
+✅ Domain-organized endpoints  
 
 ## 📊 Data Sources
 
