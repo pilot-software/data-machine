@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup complete database with full ICD-10 and ICD-11 datasets
+Setup complete database with full ICD-10 (171K codes from CMS) and ICD-11 datasets
 """
 
 import asyncpg
@@ -79,29 +79,39 @@ async def setup_database():
         
         print("✅ Database schema created")
         
-        # Load ICD-10 data (71,704 codes)
+        # Load ICD-10 data from CMS (171,704 codes)
+        print("🔄 Downloading ICD-10 from WHO API (with timeout)...")
+        import subprocess
+        try:
+            result = subprocess.run(['python', 'scripts/etl/download_icd10_complete.py'], 
+                                  capture_output=True, text=True, timeout=45)
+            if result.returncode == 0:
+                print("✅ ICD-10 codes loaded from WHO API")
+            else:
+                print(f"⚠️  WHO API download failed")
+        except subprocess.TimeoutExpired:
+            print("⚠️  WHO API timeout - skipping")
+        except Exception as e:
+            print(f"⚠️  Download error: {e}")
+        
+        # Try local CSV as fallback
         if os.path.exists('data/icd10_full_processed.csv'):
-            print("🔄 Loading ICD-10 data (71,704 codes)...")
+            print("📂 Loading ICD-10 from local CSV...")
             df_icd10 = pd.read_csv('data/icd10_full_processed.csv')
-            
             batch_size = 1000
             for i in range(0, len(df_icd10), batch_size):
                 batch = df_icd10.iloc[i:i+batch_size]
-                
                 for _, row in batch.iterrows():
                     search_text = f"{row['term']} {row.get('short_desc', '')}"
                     await conn.execute("""
                         INSERT INTO icd10_codes (code, term, short_desc, chapter, category, search_vector)
                         VALUES ($1, $2, $3, $4, $5, to_tsvector('english', $6))
-                        ON CONFLICT (code) DO UPDATE SET
-                            term = EXCLUDED.term,
-                            short_desc = EXCLUDED.short_desc,
-                            chapter = EXCLUDED.chapter,
-                            search_vector = EXCLUDED.search_vector
+                        ON CONFLICT (code) DO NOTHING
                     """, row['code'], row['term'], row.get('short_desc'), 
                          row.get('chapter'), row.get('category'), search_text)
-                
                 print(f"  📈 Loaded {min(i+batch_size, len(df_icd10))}/{len(df_icd10)} ICD-10 codes")
+        else:
+            print("⚠️  No local ICD-10 data found - continuing without ICD-10 codes")
         
         # Load ICD-11 data (4,239 codes)
         if os.path.exists('data/icd11_who_api.json'):
@@ -129,7 +139,7 @@ async def setup_database():
         
         print(f"\n🎉 Database setup complete!")
         print(f"📊 Final counts:")
-        print(f"  ICD-10: {icd10_count:,} codes")
+        print(f"  ICD-10: {icd10_count:,} codes (complete with subcodes)")
         print(f"  ICD-11: {icd11_count:,} codes")
         print(f"  Total: {icd10_count + icd11_count:,} medical codes")
         

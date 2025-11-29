@@ -27,11 +27,14 @@ source venv/bin/activate
 # Install dependencies
 echo "📥 Installing dependencies..."
 pip install -q -r requirements.txt
+pip install -q greenlet
 
 echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "📝 Next steps:"
 echo "   1. Configure .env file (copy from .env.example)"
-echo "   2. Download AB-HBP data: python scripts/etl/download_abhbp_data.py"
+echo "   2. Download AB-HBP data:"
+echo "      - Azure: python scripts/etl/download_from_azure.py"
+echo "      - Local: python scripts/etl/download_abhbp_data.py"
 echo "   3. Start service: ./start.sh"

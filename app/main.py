@@ -12,11 +12,8 @@ from app.middleware.rate_limiter import advanced_rate_limit_middleware, rate_lim
 from app.db.partitioning import partition_manager
 from app.db.indexing import index_manager
 from app.services.redis_cluster import redis_cluster
-from app.api.terminology import router as terminology_router
-from app.api.icd10 import router as icd10_router
-from app.api.enterprise import router as enterprise_router
-from app.api.drugs import router as drugs_router
-from app.api.abhbp import router as abhbp_router
+from app.api.v1_consolidated import router as v1_router
+from app.api.clinical_search import router as clinical_router
 
 # Setup structured logging
 setup_logging(settings.log_level.upper())
@@ -67,12 +64,9 @@ async def service_exception_handler(request: Request, exc: ServiceUnavailableErr
         content={"detail": "Service temporarily unavailable"}
     )
 
-# Include routers
-app.include_router(terminology_router)
-app.include_router(icd10_router)
-app.include_router(enterprise_router)
-app.include_router(drugs_router)  # Minimal unified drug API
-app.include_router(abhbp_router)  # Ayushman Bharat HBP
+# Include consolidated router
+app.include_router(v1_router)
+app.include_router(clinical_router)
 
 @app.on_event("startup")
 async def startup_event():

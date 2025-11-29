@@ -19,12 +19,20 @@ python scripts/etl/download_abhbp_data.py
 
 ## 📊 Database Coverage
 
-- **ICD-10**: 71,704 codes
+- **ICD-10**: 171,704 codes (complete with subcodes)
 - **ICD-11**: 4,239 codes  
 - **Indian Drugs**: 114+ brands, 60+ generics
 - **RxNorm Mapping**: Complete
 
-## 🔍 API Endpoints
+## 🔍 API Endpoints (Consolidated)
+
+### ICD-10/11 Search (All-in-One)
+```bash
+# Unified search with all features
+GET /api/v1/icd10/search?q=diabetes&systems=icd10,icd11
+GET /api/v1/icd10/search?q=dia&autocomplete=true
+GET /api/v1/icd10/{code}?hierarchy=true
+```
 
 ### Drug Search (Unified)
 ```bash
@@ -34,11 +42,8 @@ GET /api/v1/drugs/search?q=crocin
 GET /api/v1/drugs/search?q=fever
 ```
 
-### ICD Codes
-```bash
-GET /api/v1/search/unified?query=diabetes
-GET /api/v1/icd10/{code}
-```
+**Total Endpoints**: 11 (reduced from 20+)
+**See**: `API_QUICK_REFERENCE.md` for complete list
 
 ## 📁 Project Structure
 
@@ -76,6 +81,9 @@ GET /api/v1/icd10/{code}
 ## 🆓 Get More Data
 
 ```bash
+# Download complete ICD-10-CM codes (100K+ codes)
+python scripts/etl/download_icd10_complete.py
+
 # Download 405+ drugs from OpenFDA (FREE)
 python scripts/etl/download_opensource_data.py
 

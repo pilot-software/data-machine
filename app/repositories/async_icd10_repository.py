@@ -107,10 +107,16 @@ class AsyncICD10Repository(BaseRepository):
             raise DatabaseError("Database service unavailable")
     
     async def find_children(self, parent_code: str, limit: int = 20) -> List[ICD10]:
-        """Find child codes"""
+        """Find child codes by pattern matching"""
         async def _query():
-            # icd10_codes table doesn't have parent_code, return empty
-            return []
+            normalized = parent_code.replace('.', '').replace('-', '')
+            stmt = select(ICD10).where(
+                ICD10.code.like(f"{normalized}%"),
+                ICD10.code != normalized,
+                func.length(ICD10.code) > func.length(normalized)
+            ).limit(limit)
+            result = await self.session.execute(stmt)
+            return result.scalars().all()
         
         try:
             return await database_circuit_breaker.call(_query)
