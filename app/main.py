@@ -34,10 +34,10 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],  # Restrict origins
+    allow_origins=["*"],  # Allow all origins (configure for production)
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers including X-API-Key
 )
 
 # Add advanced rate limiting middleware
