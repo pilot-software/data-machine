@@ -12,12 +12,12 @@ from app.middleware.rate_limiter import advanced_rate_limit_middleware, rate_lim
 from app.db.partitioning import partition_manager
 from app.db.indexing import index_manager
 from app.services.redis_cluster import redis_cluster
-from app.api.endpoints import router as v1_router
+from app.api.health_endpoints import router as health_router
+from app.api.icd_endpoints import router as icd_router
+from app.api.drug_endpoints import router as drug_router
+from app.api.abhbp_endpoints import router as abhbp_router
 from app.api.clinical_endpoints import router as clinical_router
-from app.api.admin_endpoints import router as protected_router
-from app.middleware.auth import verify_api_key
-from fastapi import Depends
-import os
+from app.api.admin_endpoints import router as admin_router
 
 # Setup structured logging
 setup_logging(settings.log_level.upper())
@@ -68,10 +68,13 @@ async def service_exception_handler(request: Request, exc: ServiceUnavailableErr
         content={"detail": "Service temporarily unavailable"}
     )
 
-# Include routers (auth already in router definitions)
-app.include_router(v1_router)
-app.include_router(clinical_router)
-app.include_router(protected_router)
+# Include routers
+app.include_router(health_router)  # No auth
+app.include_router(icd_router)     # ICD codes
+app.include_router(drug_router)    # Drugs
+app.include_router(abhbp_router)   # AB-HBP
+app.include_router(clinical_router)  # Clinical
+app.include_router(admin_router)   # Admin
 
 @app.on_event("startup")
 async def startup_event():
