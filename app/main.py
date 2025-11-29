@@ -12,9 +12,9 @@ from app.middleware.rate_limiter import advanced_rate_limit_middleware, rate_lim
 from app.db.partitioning import partition_manager
 from app.db.indexing import index_manager
 from app.services.redis_cluster import redis_cluster
-from app.api.v1_consolidated import router as v1_router
-from app.api.clinical_search import router as clinical_router
-from app.api.v1_protected import router as protected_router
+from app.api.endpoints import router as v1_router
+from app.api.clinical_endpoints import router as clinical_router
+from app.api.admin_endpoints import router as protected_router
 from app.middleware.auth import verify_api_key
 from fastapi import Depends
 import os
