@@ -14,6 +14,10 @@ from app.db.indexing import index_manager
 from app.services.redis_cluster import redis_cluster
 from app.api.v1_consolidated import router as v1_router
 from app.api.clinical_search import router as clinical_router
+from app.api.v1_protected import router as protected_router
+from app.middleware.auth import verify_api_key
+from fastapi import Depends
+import os
 
 # Setup structured logging
 setup_logging(settings.log_level.upper())
@@ -64,9 +68,10 @@ async def service_exception_handler(request: Request, exc: ServiceUnavailableErr
         content={"detail": "Service temporarily unavailable"}
     )
 
-# Include consolidated router
+# Include routers (auth already in router definitions)
 app.include_router(v1_router)
 app.include_router(clinical_router)
+app.include_router(protected_router)
 
 @app.on_event("startup")
 async def startup_event():

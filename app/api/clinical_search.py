@@ -1,12 +1,13 @@
 """
 Clinical-friendly search API for doctors
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
 from app.db.database import SessionLocal
+from app.middleware.auth import verify_api_key
 import time
 
-router = APIRouter(prefix="/api/v1/clinical", tags=["clinical"])
+router = APIRouter(prefix="/api/v1/clinical", tags=["clinical"], dependencies=[Depends(verify_api_key)])
 
 # Common conditions mapping
 COMMON_CONDITIONS = {

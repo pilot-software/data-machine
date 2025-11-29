@@ -1,18 +1,18 @@
 """
 Consolidated API v1 - Minimal, non-duplicate endpoints
 """
-from fastapi import APIRouter, Query, HTTPException, Body
+from fastapi import APIRouter, Query, HTTPException, Body, Depends
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from sqlalchemy import text, or_, func
 from app.db.database import SessionLocal, get_db
 from app.services.search_logger import search_logger
 from app.db.models import ABHBPProcedure
-from fastapi import Depends
+from app.middleware.auth import verify_api_key
 from sqlalchemy.orm import Session
 import time
 
-router = APIRouter(prefix="/api/v1", tags=["v1"])
+router = APIRouter(prefix="/api/v1", tags=["v1"], dependencies=[Depends(verify_api_key)])
 
 # ============================================================================
 # HEALTH ENDPOINTS
