@@ -2,20 +2,25 @@
 
 Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) with **Indian Drug Database**, RxNorm mapping, and auto-updates.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (New Developers)
 
 ```bash
-# 1. First-time setup
-./setup.sh
+# 1. Clone repository
+git clone <repository-url>
+cd data-machine
 
-# 2. Download AB-HBP data (optional)
-python scripts/etl/download_abhbp_data.py
+# 2. Run setup (installs everything)
+./setup.sh
 
 # 3. Start service
 ./start.sh
+
+# 4. Test API
+./test_api.sh
 ```
 
-**API**: `http://localhost:8001/docs`
+**API Docs**: `http://localhost:8001/docs`
+**Setup Guide**: See `SETUP_GUIDE.md` for detailed instructions
 
 ## 📊 Database Coverage
 
