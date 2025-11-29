@@ -18,6 +18,7 @@ from app.api.drug_endpoints import router as drug_router
 from app.api.abhbp_endpoints import router as abhbp_router
 from app.api.clinical_endpoints import router as clinical_router
 from app.api.admin_endpoints import router as admin_router
+from app.api.analytics_endpoints import router as analytics_router
 
 # Setup structured logging
 setup_logging(settings.log_level.upper())
@@ -39,6 +40,10 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers including X-API-Key
 )
+
+# Add audit logging middleware
+from app.middleware.audit_logger import audit_middleware
+app.middleware("http")(audit_middleware)
 
 # Add advanced rate limiting middleware
 app.middleware("http")(advanced_rate_limit_middleware)
@@ -69,12 +74,13 @@ async def service_exception_handler(request: Request, exc: ServiceUnavailableErr
     )
 
 # Include routers
-app.include_router(health_router)  # No auth
-app.include_router(icd_router)     # ICD codes
-app.include_router(drug_router)    # Drugs
-app.include_router(abhbp_router)   # AB-HBP
-app.include_router(clinical_router)  # Clinical
-app.include_router(admin_router)   # Admin
+app.include_router(health_router)     # No auth
+app.include_router(icd_router)        # ICD codes
+app.include_router(drug_router)       # Drugs
+app.include_router(abhbp_router)      # AB-HBP
+app.include_router(clinical_router)   # Clinical
+app.include_router(admin_router)      # Admin
+app.include_router(analytics_router)  # Analytics (internal)
 
 @app.on_event("startup")
 async def startup_event():

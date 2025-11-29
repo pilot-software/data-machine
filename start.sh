@@ -40,6 +40,9 @@ fi
 echo "💊 Setting up drug tables..."
 psql -d medical_library -f scripts/setup_drug_db.sql > /dev/null 2>&1
 
+echo "📊 Setting up audit tables..."
+psql -d medical_library -f scripts/setup_audit_tables.sql > /dev/null 2>&1
+
 echo "📦 Loading sample drug data..."
 $PYTHON_CMD scripts/etl/load_sample_data.py
 if [ $? -ne 0 ]; then
