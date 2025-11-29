@@ -46,6 +46,22 @@ if [ $? -ne 0 ]; then
     echo "⚠️  Sample data loading failed (continuing anyway)"
 fi
 
+echo "💊 Loading expanded drug data..."
+if [ -f "data/real/rxnorm_generics_expanded.csv" ]; then
+    $PYTHON_CMD scripts/etl/load_expanded_data.py
+    if [ $? -eq 0 ]; then
+        echo "✅ Expanded drug data loaded"
+    else
+        echo "⚠️  Expanded data loading failed (continuing anyway)"
+    fi
+else
+    echo "⚠️  Expanded data not found, downloading..."
+    $PYTHON_CMD scripts/etl/download_expanded_data.py > /dev/null 2>&1 &
+    DOWNLOAD_PID=$!
+    echo "📥 Downloading in background (PID: $DOWNLOAD_PID)"
+    echo "   Data will be available after download completes (~3 min)"
+fi
+
 echo "🏥 Loading AB-HBP data..."
 psql -d hms_terminology -c "ALTER TABLE abhbp_procedures ALTER COLUMN procedure_type TYPE TEXT;" > /dev/null 2>&1
 if [ -f "data/abhbp_packages.csv" ]; then
