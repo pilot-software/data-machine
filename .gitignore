@@ -44,3 +44,6 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Backup folders
+backup_*/
