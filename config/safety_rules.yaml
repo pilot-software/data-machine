@@ -1,0 +1,172 @@
+# Clinical Safety Rules Configuration
+# Add new rules here without modifying code
+
+drug_contraindications:
+  - rule_id: metformin_lactic_acidosis
+    drug_keywords:
+      - metformin
+    contraindication_keywords:
+      - lactic acidosis
+      - lactate
+      - acidosis
+    description: "Metformin contraindicated with lactic acidosis risk"
+    severity: critical
+
+  - rule_id: serotonin_syndrome_exclusion
+    drug_keywords:
+      - sertraline
+      - fluoxetine
+      - paroxetine
+      - citalopram
+      - escitalopram
+      - dextromethorphan
+      - ssri
+      - snri
+    contraindication_keywords:
+      - serotonin syndrome
+      - serotonergic toxicity
+    description: "Exclude causative drugs in serotonin syndrome"
+    severity: critical
+
+  - rule_id: metformin_severe_ckd
+    drug_keywords:
+      - metformin
+    contraindication_keywords:
+      - "egfr < 30"
+      - "gfr < 30"
+      - stage 4 ckd
+      - stage 5 ckd
+    description: "Metformin contraindicated with eGFR < 30"
+    severity: critical
+
+  - rule_id: nsaid_ckd
+    drug_keywords:
+      - ibuprofen
+      - naproxen
+      - diclofenac
+    contraindication_keywords:
+      - stage 4 ckd
+      - stage 5 ckd
+      - "egfr < 30"
+    description: "NSAIDs contraindicated in severe CKD"
+    severity: high
+
+  - rule_id: ace_inhibitor_pregnancy
+    drug_keywords:
+      - enalapril
+      - lisinopril
+      - ramipril
+    contraindication_keywords:
+      - pregnant
+      - pregnancy
+    description: "ACE inhibitors contraindicated in pregnancy"
+    severity: critical
+
+pediatric_rules:
+  age_threshold: 12
+  adult_dose_patterns:
+    - '\b(500|600|650|850|1000)\s*mg\b'
+    - '\b1\s*g\b'
+  dosage_instruction: "Pediatric dose by weight (consult pediatric guidelines)"
+
+icd_code_corrections:
+  - rule_id: gestational_diabetes
+    condition_keywords:
+      - gestational diabetes
+      - gdm
+    context_keywords:
+      - pregnant
+      - pregnancy
+    wrong_codes:
+      - E11
+      - E119
+    correct_code: O24419
+    description: "Gestational diabetes requires O24.4 code"
+
+
+# Toxic Syndrome Antidote Recommendations
+toxic_syndromes:
+  - syndrome: serotonin_syndrome
+    keywords:
+      - serotonin syndrome
+      - serotonergic toxicity
+    antidotes:
+      - cyproheptadine
+      - benzodiazepine
+      - lorazepam
+      - diazepam
+    exclude_drugs:
+      - ssri
+      - snri
+      - dextromethorphan
+    severity: critical
+
+  - syndrome: opioid_overdose
+    keywords:
+      - opioid overdose
+      - respiratory depression
+      - pinpoint pupils
+    antidotes:
+      - naloxone
+    severity: critical
+
+  - syndrome: anticholinergic_toxicity
+    keywords:
+      - anticholinergic toxicity
+      - anticholinergic syndrome
+    antidotes:
+      - physostigmine
+    severity: critical
+
+  - syndrome: benzodiazepine_overdose
+    keywords:
+      - benzodiazepine overdose
+    antidotes:
+      - flumazenil
+    severity: high
+
+
+# Hepatotoxicity Rules
+hepatotoxicity:
+  - rule_id: paracetamol_cirrhosis
+    drug_keywords:
+      - paracetamol
+      - acetaminophen
+    contraindication_keywords:
+      - cirrhosis
+      - alcoholic hepatitis
+      - liver failure
+      - hepatic failure
+    max_daily_dose: "2g"
+    description: "Paracetamol max 2g/day in cirrhosis (not 4g)"
+    severity: critical
+
+# NSAID-Asthma Cross-Sensitivity
+nsaid_asthma:
+  - rule_id: nsaid_asthma_cross_sensitivity
+    drug_keywords:
+      - aspirin
+      - ibuprofen
+      - naproxen
+      - diclofenac
+      - ketorolac
+      - indomethacin
+    contraindication_keywords:
+      - asthma
+      - दम्याचा  # Marathi: asthma
+      - bronchospasm
+    description: "All NSAIDs contraindicated in aspirin-sensitive asthma"
+    severity: critical
+
+# Renal Dosing Adjustments
+renal_dosing_adjustments:
+  - rule_id: colchicine_ckd_dosing
+    drug_keywords:
+      - colchicine
+    condition_keywords:
+      - stage 4 ckd
+      - stage 5 ckd
+      - egfr < 30
+    dosage_adjustment: "Reduce dose by 50-75% in severe CKD"
+    warning: "Risk of bone marrow toxicity"
+    severity: high

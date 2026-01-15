@@ -47,7 +47,7 @@ class RedisCacheService(ICacheService):
             return False
 
 class InMemoryCacheService(ICacheService):
-    """In-memory fallback cache service"""
+    """In-memory cache service"""
     
     def __init__(self):
         self._cache = {}

@@ -59,11 +59,11 @@ class RedisClusterManager:
             
         except Exception as e:
             logger.error(f"Redis Sentinel setup failed: {e}")
-            # Fallback to single Redis instance
+            # Use single Redis instance
             await self._setup_fallback_redis()
     
     async def _setup_fallback_redis(self):
-        """Fallback to single Redis instance"""
+        """Setup single Redis instance"""
         
         try:
             redis_client = aioredis.Redis(
@@ -78,12 +78,13 @@ class RedisClusterManager:
             
             await redis_client.ping()
             self.current_master = redis_client
-            self.read_replicas = [redis_client]  # Use same for reads
+            self.read_replicas = [redis_client]
             
-            logger.info("Fallback Redis connection established")
+            logger.info("Redis connection established")
             
         except Exception as e:
-            logger.error(f"Fallback Redis setup failed: {e}")
+            logger.error(f"Redis setup failed: {e}")
+            raise
     
     async def get_write_client(self) -> aioredis.Redis:
         """Get Redis client for write operations"""

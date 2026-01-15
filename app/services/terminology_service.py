@@ -583,7 +583,7 @@ class TerminologyService:
         if word_overlap > 0.5:
             return 0.5 + (word_overlap * 0.3)
         
-        # Character-level similarity (fallback)
+        # Character-level similarity
         return 0.3
 
 # Global service instance - initialized via dependency injection

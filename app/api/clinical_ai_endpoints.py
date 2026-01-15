@@ -1,6 +1,6 @@
 """
 LLM-Powered Clinical Assistant
-Supports: AWS Bedrock, OpenAI, Ollama (FREE), Demo mode
+Supports: AWS Bedrock, OpenAI, Ollama, Groq, Grok
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +9,7 @@ from typing import List, Optional
 from sqlalchemy import text
 from app.db.database import SessionLocal
 from app.middleware.auth import verify_api_key
+from app.services.safety_rules import safety_engine
 import json
 import os
 import requests
@@ -48,7 +49,7 @@ def detect_llm():
     if os.getenv('OPENAI_API_KEY'):
         return "openai"
     
-    return "demo"
+    return None
 
 LLM_PROVIDER = detect_llm()
 
@@ -142,21 +143,24 @@ async def ai_diagnose(request: SymptomRequest):
 Patient: {request.patient_age} years old, {request.patient_gender}, Duration: {request.duration}
 Symptoms: {', '.join(request.symptoms)}
 
+⚠️ CRITICAL: You MUST respond in ENGLISH ONLY, even if symptoms are in Hindi or other languages.
+
 You MUST return ONLY a JSON object with this EXACT structure (no other text):
 {{
-  "primary_diagnosis": "disease name",
+  "primary_diagnosis": "disease name IN ENGLISH",
   "icd10_codes": ["CODE1", "CODE2"],
   "confidence": "high or medium or low",
-  "reasoning": "why this diagnosis",
-  "differential_diagnoses": ["alternative1", "alternative2"],
-  "recommended_tests": ["test1", "test2"],
-  "red_flags": ["warning1", "warning2"],
-  "generic_drugs": ["drug1", "drug2", "drug3"]
+  "reasoning": "why this diagnosis IN ENGLISH",
+  "differential_diagnoses": ["alternative1 IN ENGLISH", "alternative2 IN ENGLISH"],
+  "recommended_tests": ["test1 IN ENGLISH", "test2 IN ENGLISH"],
+  "red_flags": ["warning1 IN ENGLISH", "warning2 IN ENGLISH"],
+  "generic_drugs": ["drug1 IN ENGLISH", "drug2 IN ENGLISH", "drug3 IN ENGLISH"]
 }}
 
 IMPORTANT:
-- ICD codes: NO DOTS (write A09 not A.09, I10 not I.10)
-- Drugs: ONLY generic names (ondansetron NOT anti-nausea)
+- ALL TEXT MUST BE IN ENGLISH (translate if needed)
+- ICD codes: NO DOTS (write E11 not E.11, I10 not I.10)
+- Drugs: ONLY generic names in ENGLISH (metformin NOT मेटफॉर्मिन)
 - Be specific based on the symptoms
 
 Return ONLY the JSON object:"""
@@ -176,33 +180,19 @@ Return ONLY the JSON object:"""
         
         llm_analysis = json.loads(llm_response.strip())
         
-        # Validate ICD codes - handle both formats (N39.0 -> N390)
-        diagnosis_suggestions = []
-        for icd_code in llm_analysis.get("icd10_codes", [])[:3]:
-            # Normalize ICD code - remove dots
-            normalized_code = icd_code.replace(".", "")
-            
-            icd_result = db.execute(
-                text("SELECT code, term FROM icd10_codes WHERE code = :code"),
-                {"code": normalized_code}
-            ).fetchone()
-            
-            if icd_result:
-                diagnosis_suggestions.append({
-                    "condition": llm_analysis["primary_diagnosis"],
-                    "icd10_code": icd_result.code,
-                    "icd10_description": icd_result.term,
-                    "confidence": llm_analysis["confidence"],
-                    "reasoning": llm_analysis["reasoning"]
-                })
+        # Prepare safety context
+        safety_context = {
+            "prompt": f"Patient: {request.patient_age} years, {request.patient_gender}, Symptoms: {', '.join(request.symptoms)}",
+            "primary_diagnosis": llm_analysis.get("primary_diagnosis", ""),
+            "red_flags": llm_analysis.get("red_flags", []),
+            "differential_diagnoses": llm_analysis.get("differential_diagnoses", [])
+        }
         
-        # Get SNOMED drugs - extract simple drug names from complex strings
-        recommended_drugs = []
+        # Get drugs from database
+        raw_drugs = []
         for generic in llm_analysis.get("generic_drugs", [])[:5]:
-            # Extract simple drug name from complex strings like "Antibiotics (such as Augmentin or Ceftriaxone)"
             drug_names = []
             if "(" in generic:
-                # Extract names from parentheses
                 import re
                 matches = re.findall(r'\b([A-Z][a-z]+(?:cillin|mycin|floxacin|azole|prim|furantoin|cycline))\b', generic)
                 drug_names.extend([m.lower() for m in matches])
@@ -220,24 +210,55 @@ Return ONLY the JSON object:"""
                 """), {"generic": f"%{drug_name}%"}).fetchall()
                 
                 for drug in drugs:
-                    recommended_drugs.append({
+                    raw_drugs.append({
                         "snomed_id": drug.snomed_id,
                         "brand_name": drug.brand_name,
                         "generic_name": drug.generic_name,
                         "supplier_name": drug.supplier_name
                     })
                 
-                if drugs:  # Stop after finding matches
+                if drugs:
                     break
+        
+        # Apply safety filters
+        icd_codes = llm_analysis.get("icd10_codes", [])
+        filtered_drugs, corrected_icd_codes, safety_results = safety_engine.apply_filters(
+            raw_drugs, icd_codes, safety_context
+        )
+        
+        # Validate corrected ICD codes
+        diagnosis_suggestions = []
+        for icd_code in corrected_icd_codes[:3]:
+            normalized_code = icd_code.replace(".", "")
+            
+            icd_result = db.execute(
+                text("SELECT code, term FROM icd10_codes WHERE code = :code"),
+                {"code": normalized_code}
+            ).fetchone()
+            
+            if icd_result:
+                diagnosis_suggestions.append({
+                    "condition": llm_analysis["primary_diagnosis"],
+                    "icd10_code": icd_result.code,
+                    "icd10_description": icd_result.term,
+                    "confidence": llm_analysis["confidence"],
+                    "reasoning": llm_analysis["reasoning"]
+                })
         
         return {
             "query": ", ".join(request.symptoms),
             "llm_provider": LLM_PROVIDER,
             "diagnosis_suggestions": diagnosis_suggestions,
             "differential_diagnoses": llm_analysis.get("differential_diagnoses", []),
-            "recommended_drugs": recommended_drugs,
+            "recommended_drugs": filtered_drugs,
             "additional_tests": llm_analysis.get("recommended_tests", []),
-            "red_flags": llm_analysis.get("red_flags", [])
+            "red_flags": llm_analysis.get("red_flags", []),
+            "safety_filters_applied": {
+                "rules_triggered": safety_results["rules_triggered"],
+                "drugs_excluded": len(raw_drugs) - len(filtered_drugs),
+                "warnings": safety_results["warnings"],
+                "antidotes_recommended": safety_results.get("antidotes_recommended", [])
+            }
         }
         
     finally:
@@ -251,32 +272,43 @@ async def ai_diagnose_text(prompt: str):
     db = SessionLocal()
     
     try:
-        llm_prompt = f"""You are a medical diagnostic AI. Analyze the patient's complaint and provide diagnosis.
+        llm_prompt = f"""You are a highly accurate Clinical Decision Support System. Parse patient data into structured JSON.
 
 Patient complaint: "{prompt}"
 
-You MUST return ONLY a JSON object with this EXACT structure (no other text):
+⚠️ CRITICAL: Respond in ENGLISH ONLY. Translate if needed.
+
+### CONSTRAINTS:
+1. DIAGNOSIS MANDATE: "primary_diagnosis" MUST NOT be empty. Provide most likely diagnosis per ADA/WHO/NICE guidelines.
+2. SAFETY GATE (METFORMIN): If eGFR < 30, Metformin CONTRAINDICATED. If eGFR 30-45 + nausea/metallic taste, flag "Lactic Acidosis".
+3. EMERGENCY GATE (DKA): If sugar > 250 mg/dL AND (fruity breath OR confusion OR abdominal pain), primary diagnosis = "Diabetic Ketoacidosis". Suggest IV Fluids + Insulin only.
+4. PEDIATRIC GATE: Age < 12, NEVER adult dosages. Specify "Pediatric Suspension" + "Dose as per weight".
+5. SNOMED MAPPING: Only medications clinically indicated for PRIMARY diagnosis.
+
+### OUTPUT SCHEMA:
 {{
-  "symptoms": ["list", "of", "symptoms"],
-  "duration": "time period",
-  "primary_diagnosis": "most likely disease name",
+  "primary_diagnosis": "MANDATORY disease name",
   "icd10_codes": ["CODE1", "CODE2"],
-  "confidence": "high or medium or low",
-  "reasoning": "why this diagnosis",
+  "extracted_symptoms": ["symptom1", "symptom2"],
   "differential_diagnoses": ["alternative1", "alternative2"],
-  "recommended_tests": ["test1", "test2"],
+  "generic_drugs": ["drug1", "drug2"],
   "red_flags": ["warning1", "warning2"],
-  "generic_drugs": ["drug1", "drug2", "drug3"]
+  "clinical_rationale": "one sentence drug choice explanation",
+  "recommended_tests": ["test1", "test2"]
 }}
 
-IMPORTANT:
-- ICD codes: NO DOTS (write A09 not A.09, J069 not J06.9)
-- Drugs: ONLY generic names (ondansetron NOT anti-nausea)
-- Be specific based on the symptoms described
+RULES:
+- ICD codes: NO DOTS (E11 not E.11)
+- Drugs: Generic names ONLY (metformin not मेटफॉर्मिन)
+- Symptoms: English (प्यास -> thirst)
 
-Return ONLY the JSON object:"""
+Return ONLY JSON:"""
 
         llm_response = call_llm(llm_prompt)
+        
+        # JSON SANITIZATION: Remove control characters for multilingual support
+        import re
+        llm_response = re.sub(r'[\x00-\x1f\x7f-\x9f]', ' ', llm_response)
         
         # Parse response - extract JSON from text
         if "```json" in llm_response:
@@ -291,9 +323,43 @@ Return ONLY the JSON object:"""
         
         llm_analysis = json.loads(llm_response.strip())
         
+        # Prepare safety context
+        safety_context = {
+            "prompt": prompt,
+            "primary_diagnosis": llm_analysis.get("primary_diagnosis", ""),
+            "red_flags": llm_analysis.get("red_flags", []),
+            "differential_diagnoses": llm_analysis.get("differential_diagnoses", [])
+        }
+        
+        # Get drugs from database
+        raw_drugs = []
+        for generic in llm_analysis.get("generic_drugs", [])[:5]:
+            drugs = db.execute(text("""
+                SELECT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
+                FROM snomed_brands b
+                JOIN snomed_generics g ON b.generic_id = g.snomed_id
+                LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
+                WHERE LOWER(g.generic_name) LIKE :generic AND b.active = TRUE
+                LIMIT 2
+            """), {"generic": f"%{generic.lower()}%"}).fetchall()
+            
+            for drug in drugs:
+                raw_drugs.append({
+                    "snomed_id": drug.snomed_id,
+                    "brand_name": drug.brand_name,
+                    "generic_name": drug.generic_name,
+                    "supplier_name": drug.supplier_name
+                })
+        
+        # Apply safety filters
+        icd_codes = llm_analysis.get("icd10_codes", [])
+        filtered_drugs, corrected_icd_codes, safety_results = safety_engine.apply_filters(
+            raw_drugs, icd_codes, safety_context
+        )
+        
+        # Validate corrected ICD codes
         diagnosis_suggestions = []
-        for icd_code in llm_analysis.get("icd10_codes", [])[:3]:
-            # Normalize ICD code - remove dots
+        for icd_code in corrected_icd_codes[:3]:
             normalized_code = icd_code.replace(".", "")
             
             icd_result = db.execute(
@@ -310,35 +376,24 @@ Return ONLY the JSON object:"""
                     "reasoning": llm_analysis.get("reasoning", "")
                 })
         
-        recommended_drugs = []
-        for generic in llm_analysis.get("generic_drugs", [])[:5]:
-            drugs = db.execute(text("""
-                SELECT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
-                FROM snomed_brands b
-                JOIN snomed_generics g ON b.generic_id = g.snomed_id
-                LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                WHERE LOWER(g.generic_name) LIKE :generic AND b.active = TRUE
-                LIMIT 2
-            """), {"generic": f"%{generic.lower()}%"}).fetchall()
-            
-            for drug in drugs:
-                recommended_drugs.append({
-                    "snomed_id": drug.snomed_id,
-                    "brand_name": drug.brand_name,
-                    "generic_name": drug.generic_name,
-                    "supplier_name": drug.supplier_name
-                })
-        
         return {
             "original_prompt": prompt,
-            "extracted_symptoms": llm_analysis.get("symptoms", []),
+            "extracted_symptoms": llm_analysis.get("extracted_symptoms", []),
             "duration": llm_analysis.get("duration", ""),
+            "primary_diagnosis": llm_analysis.get("primary_diagnosis", ""),
+            "clinical_rationale": llm_analysis.get("clinical_rationale", ""),
             "llm_provider": LLM_PROVIDER,
             "diagnosis_suggestions": diagnosis_suggestions,
             "differential_diagnoses": llm_analysis.get("differential_diagnoses", []),
-            "recommended_drugs": recommended_drugs,
+            "recommended_drugs": filtered_drugs,
             "additional_tests": llm_analysis.get("recommended_tests", []),
-            "red_flags": llm_analysis.get("red_flags", [])
+            "red_flags": llm_analysis.get("red_flags", []),
+            "safety_filters_applied": {
+                "rules_triggered": safety_results["rules_triggered"],
+                "drugs_excluded": len(raw_drugs) - len(filtered_drugs),
+                "warnings": safety_results["warnings"],
+                "antidotes_recommended": safety_results.get("antidotes_recommended", [])
+            }
         }
         
     finally:
