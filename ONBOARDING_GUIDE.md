@@ -7,7 +7,7 @@
 git clone <repo-url>
 cd data-machine
 pip install -r requirements.txt
-./import_database.sh database_dumps/hms_database_20260115_130807.tar.gz
+./import_database.sh database_dumps/hms_database_20260115_192253.tar.gz
 ./start.sh
 
 # 2. Test API
@@ -228,7 +228,7 @@ psql -U your_user -d medical_library -c "SELECT 1;"
 **Issue**: Missing data
 ```bash
 # Re-import database
-./import_database.sh database_dumps/hms_database_20260115_130807.tar.gz
+./import_database.sh database_dumps/hms_database_20260115_192253.tar.gz
 ```
 
 ---

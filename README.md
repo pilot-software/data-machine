@@ -8,7 +8,7 @@ Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) w
 git clone <repo-url>
 cd data-machine
 pip install -r requirements.txt
-./import_database.sh database_dumps/hms_database_20260115_130807.tar.gz
+./import_database.sh database_dumps/hms_database_20260115_192253.tar.gz
 ./start.sh
 ```
 
