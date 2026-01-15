@@ -21,6 +21,10 @@ router = APIRouter(
 
 # Auto-detect available LLM
 def detect_llm():
+    # Try Groq (fastest)
+    if os.getenv('GROQ_API_KEY'):
+        return "groq"
+    
     # Try Grok
     if os.getenv('XAI_API_KEY'):
         return "grok"
@@ -58,9 +62,24 @@ class SymptomRequest(BaseModel):
 
 
 def call_llm(prompt: str) -> str:
-    """Call LLM (Grok, Ollama, Bedrock, OpenAI) - NO FALLBACK"""
+    """Call LLM (Groq, Grok, Ollama, Bedrock, OpenAI) - NO FALLBACK"""
     
-    if LLM_PROVIDER == "grok":
+    if LLM_PROVIDER == "groq":
+        response = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {os.getenv("GROQ_API_KEY")}'},
+            json={
+                'model': 'llama-3.3-70b-versatile',
+                'messages': [{'role': 'user', 'content': prompt}],
+                'temperature': 0.3
+            },
+            timeout=60
+        )
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content']
+        raise HTTPException(500, f"Groq failed: {response.status_code}")
+    
+    elif LLM_PROVIDER == "grok":
         response = requests.post(
             'https://api.x.ai/v1/chat/completions',
             headers={'Authorization': f'Bearer {os.getenv("XAI_API_KEY")}'},
@@ -108,7 +127,7 @@ def call_llm(prompt: str) -> str:
         )
         return response.choices[0].message.content
     
-    raise HTTPException(503, "No LLM available. Install Ollama or configure AWS Bedrock/OpenAI")
+    raise HTTPException(503, "No LLM available. Set GROQ_API_KEY, XAI_API_KEY, or install Ollama")
 
 
 @router.post("/diagnose")
