@@ -18,6 +18,14 @@ Once `install.sh` completes, the server is already running!
 ## Fresh Machine Setup (Single Command)
 
 ```bash
+# 1. Clone repository
+git clone <your-repo-url>
+cd data-machine
+
+# 2. Download data files (one-time)
+./download_data.sh
+
+# 3. Install & start
 ./install.sh
 ```
 
