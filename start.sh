@@ -1,88 +1,27 @@
 #!/bin/bash
+# Start HMS Terminology Service
 
-echo "🚀 Starting HMS Terminology Service..."
-echo ""
+echo "Starting HMS Terminology Service..."
 
-# Check if venv exists
-if [ ! -d "venv" ]; then
-    echo "❌ Virtual environment not found!"
-    echo "Run: ./setup.sh first"
-    exit 1
-fi
+# Kill any existing instance
+pkill -f "uvicorn app.main:app" 2>/dev/null || true
+sleep 1
 
-# Activate venv
-source venv/bin/activate
-PYTHON_CMD="python"
+# Create logs directory
+mkdir -p logs
 
-# Restart PostgreSQL to clear all connections
-echo "🔧 Restarting PostgreSQL..."
-brew services restart postgresql@14 > /dev/null 2>&1 || brew services restart postgresql > /dev/null 2>&1
+# Start server in background
+nohup uvicorn app.main:app --host 0.0.0.0 --port 8001 > logs/server.log 2>&1 &
+
+# Wait for server to start
 sleep 3
 
-# Check if Redis is running
-if ! redis-cli ping > /dev/null 2>&1; then
-    echo "📦 Starting Redis..."
-    redis-server --daemonize yes
-fi
-
-# Drop and recreate database
-echo "📊 Recreating database..."
-psql -d postgres -c "DROP DATABASE IF EXISTS medical_library;" > /dev/null 2>&1
-psql -d postgres -c "CREATE DATABASE medical_library;" > /dev/null 2>&1
-
-echo "⚙️  Setting up database..."
-$PYTHON_CMD scripts/setup_full_db.py
-if [ $? -ne 0 ]; then
-    echo "❌ Database setup failed"
+# Check if running
+if curl -s http://localhost:8001/api/v1/health > /dev/null 2>&1; then
+    echo "✅ Server started successfully on http://localhost:8001"
+    echo "📖 API Docs: http://localhost:8001/docs"
+    echo "📝 Logs: tail -f logs/server.log"
+else
+    echo "❌ Server failed to start. Check logs/server.log"
     exit 1
 fi
-
-echo "💊 Setting up drug tables..."
-psql -d medical_library -f scripts/setup_drug_db.sql > /dev/null 2>&1
-
-echo "📊 Setting up audit tables..."
-psql -d medical_library -f scripts/setup_audit_tables.sql > /dev/null 2>&1
-
-echo "📦 Loading sample drug data..."
-$PYTHON_CMD scripts/etl/load_sample_data.py
-if [ $? -ne 0 ]; then
-    echo "⚠️  Sample data loading failed (continuing anyway)"
-fi
-
-echo "💊 Loading expanded drug data..."
-if [ -f "data/real/rxnorm_generics_expanded.csv" ]; then
-    $PYTHON_CMD scripts/etl/load_expanded_data.py
-    if [ $? -eq 0 ]; then
-        echo "✅ Expanded drug data loaded"
-    else
-        echo "⚠️  Expanded data loading failed (continuing anyway)"
-    fi
-else
-    echo "⚠️  Expanded data not found, downloading..."
-    $PYTHON_CMD scripts/etl/download_expanded_data.py > /dev/null 2>&1 &
-    DOWNLOAD_PID=$!
-    echo "📥 Downloading in background (PID: $DOWNLOAD_PID)"
-    echo "   Data will be available after download completes (~3 min)"
-fi
-
-echo "🏥 Loading AB-HBP data..."
-psql -d medical_library -c "ALTER TABLE abhbp_procedures ALTER COLUMN procedure_type TYPE TEXT;" > /dev/null 2>&1
-if [ -f "data/abhbp_packages.csv" ]; then
-    $PYTHON_CMD scripts/etl/load_abhbp_data.py
-    if [ $? -eq 0 ]; then
-        echo "✅ AB-HBP data loaded"
-    else
-        echo "⚠️  AB-HBP loading failed (continuing anyway)"
-    fi
-else
-    echo "⚠️  AB-HBP data not found, run: $PYTHON_CMD scripts/etl/download_abhbp_data.py"
-fi
-
-echo ""
-echo "🚀 Starting API server..."
-echo "📍 Service: http://localhost:8001"
-echo "📚 Swagger: http://localhost:8001/docs"
-echo "📖 ReDoc: http://localhost:8001/redoc"
-echo ""
-
-$PYTHON_CMD -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload

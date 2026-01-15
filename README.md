@@ -1,6 +1,6 @@
 # 🏥 HMS Terminology Service - Indian Drug Database
 
-Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) with **Indian Drug Database**, RxNorm mapping, and auto-updates.
+Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) with **Indian Drug Database**, **SNOMED CT** (89K+ brands), RxNorm mapping, and auto-updates.
 
 ## 🚀 Quick Start (New Developers)
 
@@ -24,59 +24,95 @@ cd data-machine
 
 ## 📊 Database Coverage
 
+- **SNOMED CT**: 89,446 Indian brands with SNOMED codes 🆕
 - **ICD-10**: 171,704 codes (complete with subcodes)
 - **ICD-11**: 4,239 codes  
-- **Indian Drugs**: 114+ brands, 60+ generics
-- **RxNorm Mapping**: Complete
+- **Generics**: 9,869 formulations
+- **Manufacturers**: 7,934 suppliers
+- **Substances**: 28,912 active ingredients
 
 ## 🔍 API Endpoints
 
-### 🔐 Authentication Required
+### 🔐 Authentication
 
-All API endpoints require an API key in the header:
-
+All endpoints require API key:
 ```bash
 X-API-Key: dev-key-123
 ```
 
-**Available API Keys** (from .env):
-- `dev-key-123` - Development
-- `prod-key-xyz` - Production
-- `frontend-key-abc` - Frontend
+### 🆕 SNOMED CT Drugs (Recommended - 89K+ brands)
 
-### ICD-10/11 Search
 ```bash
-# Unified search
+# Search drugs
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/search?q=metformin&page=1&page_size=20"
+
+# Get brand details
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/brands/2430421000189104"
+
+# Find alternatives (same generic)
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/brands/2430421000189104/alternatives"
+
+# Get generic details
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/generics/1321000189104"
+
+# Get brands by generic
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/generics/1321000189104/brands"
+
+# Get supplier details
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/suppliers/1058411000189103"
+
+# Autocomplete
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/autocomplete?q=met&limit=10"
+
+# Statistics
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/snomed/stats"
+```
+
+### 🤖 AI Clinical Assistant (Natural Language)
+
+```bash
+# Natural language diagnosis - just describe symptoms!
+curl -X POST -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/clinical-ai/diagnose-text?prompt=frequent%20urination%20burning%20while%20passing%20urine%20lower%20abdominal%20pain%20female%2032%20years"
+
+# Structured diagnosis
+curl -X POST -H "X-API-Key: dev-key-123" \
+  -H "Content-Type: application/json" \
+  -d '{"symptoms": ["cough", "fever"], "patient_age": 35}' \
+  "http://localhost:8001/api/v1/clinical-ai/diagnose"
+
+# Check LLM status
+curl -H "X-API-Key: dev-key-123" \
+  "http://localhost:8001/api/v1/clinical-ai/status"
+```
+
+### 🏥 ICD Codes
+
+```bash
+# Search ICD-10/11
 curl -H "X-API-Key: dev-key-123" \
   "http://localhost:8001/api/v1/icd/search?q=diabetes"
-
-# With autocomplete
-curl -H "X-API-Key: dev-key-123" \
-  "http://localhost:8001/api/v1/icd/search?q=dia&autocomplete=true"
 
 # Get code details
 curl -H "X-API-Key: dev-key-123" \
   "http://localhost:8001/api/v1/icd/E11?hierarchy=true"
 ```
 
-### Drug Search
-```bash
-# Search by brand, generic, or symptom
-curl -H "X-API-Key: dev-key-123" \
-  "http://localhost:8001/api/v1/drugs/search?q=metformin"
+### ❤️ Health Check
 
-curl -H "X-API-Key: dev-key-123" \
-  "http://localhost:8001/api/v1/drugs/search?q=fever"
-```
-
-### Health Check (No Auth)
 ```bash
-# Public endpoint
 curl http://localhost:8001/api/v1/health
 ```
 
-**Total Endpoints**: 11 organized by domain
-**See**: `API_QUICK_REFERENCE.md` for complete list
+**📚 Complete API Documentation**: http://localhost:8001/docs
 
 ## 📁 Project Structure
 
@@ -105,11 +141,15 @@ curl http://localhost:8001/api/v1/health
 
 ## 📖 Documentation
 
-- [Drug ETL Guide](docs/README_DRUG_ETL.md)
-- [Data Sources](docs/DATA_SOURCES.md)
-- [API Endpoints](docs/FINAL_API_ENDPOINTS.md)
-- [Cron Setup](docs/CRON_SETUP.md)
-- [Open Source Data](docs/OPENSOURCE_DATA_SOURCES.md)
+- **[Natural Language API](NATURAL_LANGUAGE_API.md)** - Free-form symptom diagnosis 🆕
+- **[LLM Setup Guide](LLM_SETUP_GUIDE.md)** - AWS Bedrock/OpenAI integration 🆕
+- **[AI Clinical Assistant](AI_CLINICAL_ASSISTANT.md)** - Amazon Q for doctors
+- **[User Guide](USER_GUIDE.md)** - Complete API usage guide
+- [SNOMED CT Integration](docs/SNOMED_INTEGRATION.md) - Technical details
+- [SNOMED Quick Start](SNOMED_QUICKSTART.md) - 5-minute setup
+- [Migration Guide](docs/SNOMED_MIGRATION_GUIDE.md) - Legacy to SNOMED
+- [Data Sources](docs/DATA_SOURCES.md) - Data provenance
+- [API Endpoints](docs/FINAL_API_ENDPOINTS.md) - Complete reference
 
 ## 🆓 Get More Data
 
@@ -126,12 +166,15 @@ python scripts/etl/download_expanded_data.py
 
 ## 🎯 Features
 
-✅ Indian Brand ↔ RxNorm ↔ Generic mapping  
-✅ Symptom-based drug search  
+✅ **AI Clinical Assistant (LLM-Powered)** - Uses AWS Bedrock/OpenAI for intelligent diagnosis 🆕  
+✅ **SNOMED CT Integration** - 89K+ Indian brands with global standard codes  
+✅ **Natural Language Understanding** - Handles ANY symptom description 🆕  
+✅ **Outbreak Detection** - Real-time alerts based on prescription patterns  
+✅ **Smart Prescriptions** - Learn from hospital data  
+✅ Drug alternatives finder (same generic formulation)  
+✅ ICD-10/11 coding for insurance  
 ✅ API Key authentication  
-✅ Auto-updates via cron  
-✅ 100% open-source data sources  
-✅ Domain-organized endpoints  
+✅ Fast autocomplete (< 20ms)    
 
 ## 📊 Data Sources
 

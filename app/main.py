@@ -14,7 +14,9 @@ from app.db.indexing import index_manager
 from app.services.redis_cluster import redis_cluster
 from app.api.health_endpoints import router as health_router
 from app.api.icd_endpoints import router as icd_router
-from app.api.drug_endpoints import router as drug_router
+from app.api.snomed_endpoints import router as snomed_router
+from app.api.snomed_extended_endpoints import router as snomed_extended_router
+from app.api.clinical_ai_endpoints import router as clinical_ai_router
 from app.api.abhbp_endpoints import router as abhbp_router
 from app.api.clinical_endpoints import router as clinical_router
 from app.api.admin_endpoints import router as admin_router
@@ -74,13 +76,15 @@ async def service_exception_handler(request: Request, exc: ServiceUnavailableErr
     )
 
 # Include routers
-app.include_router(health_router)     # No auth
-app.include_router(icd_router)        # ICD codes
-app.include_router(drug_router)       # Drugs
-app.include_router(abhbp_router)      # AB-HBP
-app.include_router(clinical_router)   # Clinical
-app.include_router(admin_router)      # Admin
-app.include_router(analytics_router)  # Analytics (internal)
+app.include_router(health_router)        # No auth
+app.include_router(icd_router)           # ICD codes
+app.include_router(snomed_router)        # SNOMED drugs (89K+ Indian brands)
+app.include_router(snomed_extended_router) # SNOMED extended (hierarchies, classifications)
+app.include_router(clinical_ai_router)   # AI Clinical Assistant
+app.include_router(abhbp_router)         # AB-HBP
+app.include_router(clinical_router)      # Clinical
+app.include_router(admin_router)         # Admin
+app.include_router(analytics_router)     # Analytics (internal)
 
 @app.on_event("startup")
 async def startup_event():

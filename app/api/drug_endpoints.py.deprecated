@@ -1,5 +1,6 @@
 """
-Drug Database Endpoints
+Drug Database Endpoints - DEPRECATED
+Use /api/v1/snomed endpoints instead for 89K+ Indian brands
 """
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import List
@@ -9,12 +10,19 @@ from app.db.database import SessionLocal
 from app.services.search_logger import search_logger
 from app.middleware.auth import verify_api_key
 import time
+import warnings
 
-router = APIRouter(prefix="/api/v1/drugs", tags=["drugs"], dependencies=[Depends(verify_api_key)])
+router = APIRouter(prefix="/api/v1/drugs", tags=["drugs-legacy"], dependencies=[Depends(verify_api_key)])
 
-@router.get("/search")
-async def search_drugs(q: str = Query(..., min_length=2)):
-    """Unified drug search: brand, generic, symptom"""
+@router.get("/search", deprecated=True)
+async def search_drugs_legacy(q: str = Query(..., min_length=2)):
+    """
+    DEPRECATED: Use /api/v1/snomed/search instead
+    
+    Legacy drug search (114 brands only)
+    Migrate to SNOMED endpoints for 89K+ brands
+    """
+    warnings.warn("This endpoint is deprecated. Use /api/v1/snomed/search", DeprecationWarning)
     start = time.time()
     db = SessionLocal()
     try:
@@ -51,14 +59,20 @@ async def search_drugs(q: str = Query(..., min_length=2)):
             "found": len(drugs) > 0,
             "total": len(drugs),
             "drugs": drugs,
-            "response_time_ms": round(response_time, 2)
+            "response_time_ms": round(response_time, 2),
+            "warning": "DEPRECATED: Use /api/v1/snomed/search for 89K+ brands"
         }
     finally:
         db.close()
 
-@router.get("/{drug_id}")
-async def get_drug_details(drug_id: int):
-    """Get drug details by ID"""
+@router.get("/{drug_id}", deprecated=True)
+async def get_drug_details_legacy(drug_id: int):
+    """
+    DEPRECATED: Use /api/v1/snomed/brands/{snomed_id} instead
+    
+    Legacy drug details (114 brands only)
+    """
+    warnings.warn("This endpoint is deprecated. Use /api/v1/snomed/brands/{id}", DeprecationWarning)
     db = SessionLocal()
     try:
         sql = text("""
@@ -72,40 +86,9 @@ async def get_drug_details(drug_id: int):
         if not result:
             raise HTTPException(404, "Drug not found")
         
-        return dict(result._mapping)
+        data = dict(result._mapping)
+        data["warning"] = "DEPRECATED: Use /api/v1/snomed/brands/{snomed_id}"
+        return data
     finally:
         db.close()
 
-class InteractionRequest(BaseModel):
-    drug_ids: List[int] = Field(..., min_items=2, max_items=10)
-
-@router.post("/interactions")
-async def check_drug_interactions(req: InteractionRequest):
-    """Check drug interactions"""
-    db = SessionLocal()
-    try:
-        sql = text("""
-            SELECT di.severity, di.description, di.clinical_effect,
-                gi1.ingredient_name as drug_a, gi2.ingredient_name as drug_b
-            FROM drug_interactions di
-            JOIN generic_ingredients gi1 ON di.drug_a_id = gi1.ingredient_id
-            JOIN generic_ingredients gi2 ON di.drug_b_id = gi2.ingredient_id
-            WHERE di.drug_a_id IN (
-                SELECT ingredient_id FROM indian_brand_drugs WHERE brand_id = ANY(:ids)
-            )
-            AND di.drug_b_id IN (
-                SELECT ingredient_id FROM indian_brand_drugs WHERE brand_id = ANY(:ids)
-            )
-        """)
-        
-        rows = db.execute(sql, {"ids": req.drug_ids}).fetchall()
-        interactions = [dict(r._mapping) for r in rows]
-        
-        return {
-            "drug_ids": req.drug_ids,
-            "has_interactions": len(interactions) > 0,
-            "count": len(interactions),
-            "interactions": interactions
-        }
-    finally:
-        db.close()
