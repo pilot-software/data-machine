@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 import logging
 import os
+import asyncio
 from app.core.settings import settings
 from app.core.service_factory import setup_dependencies
 from app.core.exceptions import DatabaseError, ServiceUnavailableError

@@ -7,7 +7,7 @@ Enterprise-grade FastAPI microservice for medical terminology (ICD-10, ICD-11) w
 ```bash
 git clone <repository-url>
 cd data-machine
-./import_database.sh database_dumps/hms_database_20260115_112015.tar.gz
+./import_database.sh database_dumps/hms_database_20260115_130807.tar.gz
 ./start.sh
 ```
 
@@ -53,6 +53,7 @@ curl -H "X-API-Key: dev-key-123" \
 
 ## 📖 Documentation
 
+- **[🚀 New Engineer Onboarding](ONBOARDING_GUIDE.md)** - Start here! Quick guide for new developers
 - **[Deployment Guide](DEPLOYMENT.md)** - Production setup
 - **[Workflow Guide](WORKFLOW.md)** - Usage patterns
 - **[LLM Setup](LLM_SETUP_GUIDE.md)** - AI configuration

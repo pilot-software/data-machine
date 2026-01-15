@@ -13,6 +13,10 @@ from app.services.safety_rules import safety_engine
 import json
 import os
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 router = APIRouter(
     prefix="/api/v1/clinical-ai",
@@ -22,6 +26,11 @@ router = APIRouter(
 
 # Auto-detect available LLM
 def detect_llm():
+    # Force provider if set
+    force_provider = os.getenv('FORCE_LLM_PROVIDER')
+    if force_provider:
+        return force_provider
+    
     # Try Groq (fastest)
     if os.getenv('GROQ_API_KEY'):
         return "groq"
