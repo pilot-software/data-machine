@@ -10,6 +10,7 @@ from sqlalchemy import text
 from app.db.database import SessionLocal
 from app.middleware.auth import verify_api_key
 from app.services.safety_rules import safety_engine
+from app.services.rxnorm_validator import validate_drugs_with_rxnorm
 import json
 import os
 import requests
@@ -214,7 +215,9 @@ Return ONLY the JSON object:"""
                     FROM snomed_brands b
                     JOIN snomed_generics g ON b.generic_id = g.snomed_id
                     LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                    WHERE LOWER(g.generic_name) LIKE :generic AND b.active = TRUE
+                    WHERE LOWER(g.generic_name) LIKE :generic 
+                      AND b.active = TRUE
+                      AND b.route_of_administration = 'oral'
                     LIMIT 2
                 """), {"generic": f"%{drug_name}%"}).fetchall()
                 
@@ -234,6 +237,14 @@ Return ONLY the JSON object:"""
         filtered_drugs, corrected_icd_codes, safety_results = safety_engine.apply_filters(
             raw_drugs, icd_codes, safety_context
         )
+        
+        # RxNorm validation (drug interactions, contraindications)
+        patient_age = request.patient_age or 35
+        rxnorm_validation = validate_drugs_with_rxnorm(
+            filtered_drugs, patient_age, llm_analysis.get("primary_diagnosis", ""), db
+        )
+        safety_results["warnings"].extend(rxnorm_validation["warnings"])
+        safety_results["drug_interactions"] = rxnorm_validation["interactions"]
         
         # Validate corrected ICD codes
         diagnosis_suggestions = []
@@ -266,7 +277,8 @@ Return ONLY the JSON object:"""
                 "rules_triggered": safety_results["rules_triggered"],
                 "drugs_excluded": len(raw_drugs) - len(filtered_drugs),
                 "warnings": safety_results["warnings"],
-                "antidotes_recommended": safety_results.get("antidotes_recommended", [])
+                "antidotes_recommended": safety_results.get("antidotes_recommended", []),
+                "drug_interactions": safety_results.get("drug_interactions", [])
             }
         }
         
@@ -281,35 +293,31 @@ async def ai_diagnose_text(prompt: str):
     db = SessionLocal()
     
     try:
-        llm_prompt = f"""You are a highly accurate Clinical Decision Support System. Parse patient data into structured JSON.
+        llm_prompt = f"""You are a Clinical Decision Support System. Parse patient complaint into structured JSON.
 
 Patient complaint: "{prompt}"
 
-⚠️ CRITICAL: Respond in ENGLISH ONLY. Translate if needed.
-
-### CONSTRAINTS:
-1. DIAGNOSIS MANDATE: "primary_diagnosis" MUST NOT be empty. Provide most likely diagnosis per ADA/WHO/NICE guidelines.
-2. SAFETY GATE (METFORMIN): If eGFR < 30, Metformin CONTRAINDICATED. If eGFR 30-45 + nausea/metallic taste, flag "Lactic Acidosis".
-3. EMERGENCY GATE (DKA): If sugar > 250 mg/dL AND (fruity breath OR confusion OR abdominal pain), primary diagnosis = "Diabetic Ketoacidosis". Suggest IV Fluids + Insulin only.
-4. PEDIATRIC GATE: Age < 12, NEVER adult dosages. Specify "Pediatric Suspension" + "Dose as per weight".
-5. SNOMED MAPPING: Only medications clinically indicated for PRIMARY diagnosis.
+⚠️ CRITICAL RULES:
+1. Extract symptoms accurately from the complaint (translate if non-English)
+2. Diagnosis MUST match the extracted symptoms only
+3. Do NOT invent symptoms not mentioned
+4. Respond in English
 
 ### OUTPUT SCHEMA:
 {{
-  "primary_diagnosis": "MANDATORY disease name",
+  "primary_diagnosis": "disease name matching the symptoms",
   "icd10_codes": ["CODE1", "CODE2"],
   "extracted_symptoms": ["symptom1", "symptom2"],
   "differential_diagnoses": ["alternative1", "alternative2"],
   "generic_drugs": ["drug1", "drug2"],
   "red_flags": ["warning1", "warning2"],
-  "clinical_rationale": "one sentence drug choice explanation",
+  "clinical_rationale": "why these drugs for THIS diagnosis",
   "recommended_tests": ["test1", "test2"]
 }}
 
 RULES:
-- ICD codes: NO DOTS (E11 not E.11)
-- Drugs: Generic names ONLY (metformin not मेटफॉर्मिन)
-- Symptoms: English (प्यास -> thirst)
+- ICD codes: NO DOTS (J06 not J.06)
+- Drugs: Generic names ONLY
 
 Return ONLY JSON:"""
 
@@ -348,7 +356,9 @@ Return ONLY JSON:"""
                 FROM snomed_brands b
                 JOIN snomed_generics g ON b.generic_id = g.snomed_id
                 LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                WHERE LOWER(g.generic_name) LIKE :generic AND b.active = TRUE
+                WHERE LOWER(g.generic_name) LIKE :generic 
+                  AND b.active = TRUE
+                  AND b.route_of_administration = 'oral'
                 LIMIT 2
             """), {"generic": f"%{generic.lower()}%"}).fetchall()
             
@@ -365,6 +375,17 @@ Return ONLY JSON:"""
         filtered_drugs, corrected_icd_codes, safety_results = safety_engine.apply_filters(
             raw_drugs, icd_codes, safety_context
         )
+        
+        # RxNorm validation
+        import re
+        age_match = re.search(r'(\d+)\s*(?:year|yr|age)', prompt.lower())
+        patient_age = int(age_match.group(1)) if age_match else 35
+        
+        rxnorm_validation = validate_drugs_with_rxnorm(
+            filtered_drugs, patient_age, llm_analysis.get("primary_diagnosis", ""), db
+        )
+        safety_results["warnings"].extend(rxnorm_validation["warnings"])
+        safety_results["drug_interactions"] = rxnorm_validation["interactions"]
         
         # Validate corrected ICD codes
         diagnosis_suggestions = []
@@ -401,7 +422,8 @@ Return ONLY JSON:"""
                 "rules_triggered": safety_results["rules_triggered"],
                 "drugs_excluded": len(raw_drugs) - len(filtered_drugs),
                 "warnings": safety_results["warnings"],
-                "antidotes_recommended": safety_results.get("antidotes_recommended", [])
+                "antidotes_recommended": safety_results.get("antidotes_recommended", []),
+                "drug_interactions": safety_results.get("drug_interactions", [])
             }
         }
         

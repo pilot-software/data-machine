@@ -295,10 +295,19 @@ class SafetyRulesEngine:
         # Rule 4: Gestational Diabetes ICD code
         self.rules.append(ICDCodeCorrectionRule(
             rule_id="gdm_icd_code",
-            condition_keywords=["gestational diabetes", "gdm", "pregnant", "gestation"],
+            condition_keywords=["gestational diabetes", "gdm"],
             wrong_codes=["E11", "E119", "E10", "E109"],
             correct_code="O24419",
             description="Gestational diabetes requires O24.4 code, not E11"
+        ))
+        
+        # Rule 4b: Pregnancy Hypertension ICD code
+        self.rules.append(ICDCodeCorrectionRule(
+            rule_id="pregnancy_hypertension_icd",
+            condition_keywords=["hypertension in pregnancy", "pregnancy hypertension", "pregnant"],
+            wrong_codes=["I10", "I11", "I12", "I13", "I15"],
+            correct_code="O139",
+            description="Hypertension in pregnancy requires O139 (gestational hypertension), not I10"
         ))
         
         # Rule 5: Renal dosing
