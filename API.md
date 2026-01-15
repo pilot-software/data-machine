@@ -11,11 +11,15 @@ X-API-Key: dev-key-123
 
 ## 🏆 Top 5 Most Useful Endpoints
 
-### 1. AI Diagnosis (Natural Language) ⭐⭐⭐⭐⭐
+### 1. AI Diagnosis (Natural Language) ⭐⭐⭐⭐⭐ 🤖 AI + 💾 DB
 
 **Endpoint**: `POST /api/v1/clinical-ai/diagnose-text`
 
 **Use Case**: Doctor types symptoms naturally, AI provides diagnosis
+
+**How it works**: 
+- 🤖 **Groq AI**: Analyzes symptoms, suggests diagnosis
+- 💾 **Database**: Validates ICD-10 codes, finds SNOMED drugs
 
 **Request**:
 ```bash
@@ -44,11 +48,14 @@ curl -X POST "http://localhost:8001/api/v1/clinical-ai/diagnose-text?prompt=pati
 
 ---
 
-### 2. Drug Search ⭐⭐⭐⭐⭐
+### 2. Drug Search ⭐⭐⭐⭐⭐ 💾 DB Only
 
 **Endpoint**: `GET /api/v1/snomed/search`
 
 **Use Case**: Find any drug from 89K brands
+
+**How it works**: 
+- 💾 **Database**: Fast search across 89,446 SNOMED brands
 
 **Request**:
 ```bash
@@ -72,11 +79,14 @@ curl "http://localhost:8001/api/v1/snomed/search?q=paracetamol&page=1&page_size=
 
 ---
 
-### 3. Get Drug Alternatives ⭐⭐⭐⭐
+### 3. Get Drug Alternatives ⭐⭐⭐⭐ 💾 DB Only
 
 **Endpoint**: `GET /api/v1/snomed/brands/{id}/alternatives`
 
 **Use Case**: Find cheaper/available alternatives (same generic)
+
+**How it works**: 
+- 💾 **Database**: Finds all brands with same generic formulation
 
 **Request**:
 ```bash
@@ -103,11 +113,14 @@ curl "http://localhost:8001/api/v1/snomed/brands/2430421000189104/alternatives" 
 
 ---
 
-### 4. ICD Code Search ⭐⭐⭐⭐
+### 4. ICD Code Search ⭐⭐⭐⭐ 💾 DB Only
 
 **Endpoint**: `GET /api/v1/icd/search`
 
 **Use Case**: Get ICD-10 codes for insurance claims
+
+**How it works**: 
+- 💾 **Database**: Searches 71,704 ICD-10 codes
 
 **Request**:
 ```bash
@@ -133,11 +146,14 @@ curl "http://localhost:8001/api/v1/icd/search?q=diabetes" \
 
 ---
 
-### 5. Get All Antibiotics ⭐⭐⭐
+### 5. Get All Antibiotics ⭐⭐⭐ 💾 DB Only
 
 **Endpoint**: `GET /api/v1/snomed/extended/antibiotics`
 
 **Use Case**: Quick access to all 34K antibiotics
+
+**How it works**: 
+- 💾 **Database**: Returns pre-classified antibiotics from 34,042 drugs
 
 **Request**:
 ```bash
@@ -167,36 +183,40 @@ curl "http://localhost:8001/api/v1/snomed/extended/antibiotics?page=1&page_size=
 // 1. Patient describes symptoms
 const symptoms = "fever, cough, body ache for 3 days";
 
-// 2. AI Diagnosis
+// 2. AI Diagnosis (🤖 AI + 💾 DB)
 const diagnosis = await fetch('/api/v1/clinical-ai/diagnose-text', {
   method: 'POST',
   headers: { 'X-API-Key': 'dev-key-123' },
   body: JSON.stringify({ prompt: symptoms })
 });
+// Groq analyzes → Database validates ICD & finds drugs
 
-// 3. Search recommended drug
+// 3. Search recommended drug (💾 DB Only)
 const drugName = diagnosis.recommended_drugs[0].generic_name;
 const drugs = await fetch(`/api/v1/snomed/search?q=${drugName}`, {
   headers: { 'X-API-Key': 'dev-key-123' }
 });
+// Database searches 89K brands
 
-// 4. Get alternatives (if needed)
+// 4. Get alternatives (💾 DB Only)
 const alternatives = await fetch(
   `/api/v1/snomed/brands/${drugs.results[0].snomed_id}/alternatives`,
   { headers: { 'X-API-Key': 'dev-key-123' } }
 );
+// Database finds same generic
 
-// 5. Get ICD code for insurance
+// 5. Get ICD code for insurance (💾 DB Only)
 const icd = await fetch(`/api/v1/icd/search?q=${diagnosis.condition}`, {
   headers: { 'X-API-Key': 'dev-key-123' }
 });
+// Database searches ICD codes
 ```
 
 ---
 
 ## 📊 Additional Useful Endpoints
 
-### Drug Classifications
+### Drug Classifications (💾 DB Only)
 ```bash
 # Get all drug classes
 GET /api/v1/snomed/extended/drug-classes
@@ -205,7 +225,7 @@ GET /api/v1/snomed/extended/drug-classes
 GET /api/v1/snomed/extended/by-class/analgesic
 ```
 
-### Drug Details
+### Drug Details (💾 DB Only)
 ```bash
 # Get brand details
 GET /api/v1/snomed/brands/{id}
@@ -214,11 +234,29 @@ GET /api/v1/snomed/brands/{id}
 GET /api/v1/snomed/generics/{id}
 ```
 
-### Health Check
+### Health Check (💾 DB Only)
 ```bash
 # Check API status
 GET /api/v1/health
 ```
+
+---
+
+## 🎯 AI vs Database Endpoints
+
+### 🤖 AI-Powered (Groq + Database)
+- `POST /api/v1/clinical-ai/diagnose` - Structured diagnosis
+- `POST /api/v1/clinical-ai/diagnose-text` - Natural language diagnosis
+
+### 💾 Database Only (Fast, No AI)
+- `GET /api/v1/snomed/search` - Drug search
+- `GET /api/v1/snomed/brands/{id}/alternatives` - Drug alternatives
+- `GET /api/v1/icd/search` - ICD code search
+- `GET /api/v1/snomed/extended/antibiotics` - Get antibiotics
+- `GET /api/v1/snomed/extended/by-class/{class}` - Get by drug class
+- All other endpoints
+
+**Note**: AI endpoints use Groq for intelligence, then validate against database for accuracy!
 
 ---
 
