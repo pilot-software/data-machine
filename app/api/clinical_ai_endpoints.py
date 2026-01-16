@@ -11,6 +11,7 @@ from app.db.database import SessionLocal
 from app.middleware.auth import verify_api_key
 from app.services.safety_rules import safety_engine
 from app.services.rxnorm_validator import validate_drugs_with_rxnorm
+from app.services.therapeutic_search import get_drugs_for_symptoms
 import json
 import os
 import requests
@@ -348,27 +349,35 @@ Return ONLY JSON:"""
             "differential_diagnoses": llm_analysis.get("differential_diagnoses", [])
         }
         
-        # Get drugs from database
-        raw_drugs = []
-        for generic in llm_analysis.get("generic_drugs", [])[:5]:
-            drugs = db.execute(text("""
-                SELECT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
-                FROM snomed_brands b
-                JOIN snomed_generics g ON b.generic_id = g.snomed_id
-                LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                WHERE LOWER(g.generic_name) LIKE :generic 
-                  AND b.active = TRUE
-                  AND b.route_of_administration = 'oral'
-                LIMIT 2
-            """), {"generic": f"%{generic.lower()}%"}).fetchall()
-            
-            for drug in drugs:
-                raw_drugs.append({
-                    "snomed_id": drug.snomed_id,
-                    "brand_name": drug.brand_name,
-                    "generic_name": drug.generic_name,
-                    "supplier_name": drug.supplier_name
-                })
+        # Get drugs from database using ICD-10 mapping (priority) or symptoms
+        symptoms = llm_analysis.get("extracted_symptoms", [])
+        diagnosis = llm_analysis.get("primary_diagnosis", "")
+        icd_codes = llm_analysis.get("icd10_codes", [])
+        
+        # Use SNOMED therapeutic data with ICD-10 priority
+        raw_drugs = get_drugs_for_symptoms(db, symptoms, diagnosis, icd_codes)
+        
+        if not raw_drugs:
+            # Fallback to generic name search
+            for generic in llm_analysis.get("generic_drugs", [])[:5]:
+                drugs = db.execute(text("""
+                    SELECT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
+                    FROM snomed_brands b
+                    JOIN snomed_generics g ON b.generic_id = g.snomed_id
+                    LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
+                    WHERE LOWER(g.generic_name) LIKE :generic 
+                      AND b.active = TRUE
+                      AND b.route_of_administration = 'oral'
+                    LIMIT 2
+                """), {"generic": f"%{generic.lower()}%"}).fetchall()
+                
+                for drug in drugs:
+                    raw_drugs.append({
+                        "snomed_id": drug.snomed_id,
+                        "brand_name": drug.brand_name,
+                        "generic_name": drug.generic_name,
+                        "supplier_name": drug.supplier_name
+                    })
         
         # Apply safety filters
         icd_codes = llm_analysis.get("icd10_codes", [])
