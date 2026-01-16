@@ -81,7 +81,7 @@ def call_llm(prompt: str) -> str:
             'https://api.groq.com/openai/v1/chat/completions',
             headers={'Authorization': f'Bearer {os.getenv("GROQ_API_KEY")}'},
             json={
-                'model': 'llama-3.3-70b-versatile',
+                'model': 'openai/gpt-oss-120b',
                 'messages': [{'role': 'user', 'content': prompt}],
                 'temperature': 0.3
             },

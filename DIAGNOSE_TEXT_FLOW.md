@@ -31,7 +31,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │ 5. LLM CALL (Groq/Ollama)                                        │
 │ Function: call_llm(prompt)                                       │
-│ ├─ Provider: Groq (llama-3.3-70b-versatile)                     │
+│ ├─ Provider: Groq (openai/gpt-oss-120b)                         │
 │ ├─ Temperature: 0.3 (deterministic)                              │
 │ └─ Timeout: 60 seconds                                           │
 └─────────────────────────────────────────────────────────────────┘
