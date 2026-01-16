@@ -92,15 +92,20 @@ async def get_drugs_by_class(
     try:
         class_map = {
             "antibiotic": "is_antibiotic",
+            "antibiotics": "is_antibiotic",
             "analgesic": "is_analgesic",
+            "analgesics": "is_analgesic",
             "antihypertensive": "is_antihypertensive",
+            "antihypertensives": "is_antihypertensive",
             "antidiabetic": "is_antidiabetic",
-            "antiinflammatory": "is_antiinflammatory"
+            "antidiabetics": "is_antidiabetic",
+            "antiinflammatory": "is_antiinflammatory",
+            "antiinflammatories": "is_antiinflammatory"
         }
         
         column = class_map.get(drug_class.lower())
         if not column:
-            return {"error": "Invalid drug class"}
+            return {"error": f"Invalid drug class. Valid: {', '.join(set(class_map.keys()))}"}
         
         offset = (page - 1) * page_size
         
@@ -136,22 +141,38 @@ async def get_drug_definition(snomed_id: int):
     """Get clinical definition for a drug"""
     db = SessionLocal()
     try:
-        result = db.execute(text("""
-            SELECT d.definition, b.brand_name, g.generic_name
-            FROM snomed_drug_definitions d
-            JOIN snomed_brands b ON d.drug_id = b.snomed_id
+        drug = db.execute(text("""
+            SELECT b.brand_name, g.generic_name, b.route_of_administration
+            FROM snomed_brands b
             LEFT JOIN snomed_generics g ON b.generic_id = g.snomed_id
-            WHERE d.drug_id = :snomed_id
+            WHERE b.snomed_id = :snomed_id
         """), {"snomed_id": snomed_id}).fetchone()
         
-        if not result:
-            return {"error": "Definition not found"}
+        if not drug:
+            return {"error": "Drug not found"}
+        
+        # Extract actual route from product name
+        route = drug.route_of_administration
+        name_lower = (drug.brand_name or "").lower() + " " + (drug.generic_name or "").lower()
+        if "eye solution" in name_lower or "eye drop" in name_lower or "ophthalmic" in name_lower:
+            route = "ophthalmic"
+        elif "injection" in name_lower or "powder for solution" in name_lower:
+            route = "injection"
+        elif "vaginal" in name_lower:
+            route = "vaginal"
+        elif "topical" in name_lower or "cream" in name_lower or "ointment" in name_lower:
+            route = "topical"
+        
+        definition_result = db.execute(text("""
+            SELECT definition FROM snomed_drug_definitions WHERE drug_id = :snomed_id
+        """), {"snomed_id": snomed_id}).fetchone()
         
         return {
             "snomed_id": snomed_id,
-            "brand_name": result.brand_name,
-            "generic_name": result.generic_name,
-            "definition": result.definition
+            "brand_name": drug.brand_name,
+            "generic_name": drug.generic_name,
+            "route": route,
+            "definition": definition_result.definition if definition_result else "No clinical definition available"
         }
     finally:
         db.close()
