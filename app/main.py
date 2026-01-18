@@ -18,7 +18,6 @@ from app.api.icd_endpoints import router as icd_router
 from app.api.snomed_endpoints import router as snomed_router
 from app.api.snomed_extended_endpoints import router as snomed_extended_router
 from app.api.clinical_ai_endpoints import router as clinical_ai_router
-from app.api.abhbp_endpoints import router as abhbp_router
 from app.api.clinical_endpoints import router as clinical_router
 from app.api.admin_endpoints import router as admin_router
 from app.api.analytics_endpoints import router as analytics_router
@@ -82,7 +81,6 @@ app.include_router(icd_router)           # ICD codes
 app.include_router(snomed_router)        # SNOMED drugs (89K+ Indian brands)
 app.include_router(snomed_extended_router) # SNOMED extended (hierarchies, classifications)
 app.include_router(clinical_ai_router)   # AI Clinical Assistant
-app.include_router(abhbp_router)         # AB-HBP
 app.include_router(clinical_router)      # Clinical
 app.include_router(admin_router)         # Admin
 app.include_router(analytics_router)     # Analytics (internal)

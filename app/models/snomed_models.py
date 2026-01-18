@@ -96,34 +96,3 @@ class SnomedSupplier(Base):
     
     # Relationship
     brands = relationship("SnomedBrand", back_populates="supplier")
-
-
-class SnomedDrugForm(Base):
-    __tablename__ = "snomed_drug_forms"
-    
-    snomed_id = Column(BigInteger, primary_key=True)
-    form_name = Column(Text, nullable=False)
-    form_description = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class SnomedRoute(Base):
-    __tablename__ = "snomed_routes"
-    
-    snomed_id = Column(BigInteger, primary_key=True)
-    route_name = Column(Text, nullable=False)
-    route_description = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class SnomedETLLog(Base):
-    __tablename__ = "snomed_etl_log"
-    
-    log_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    table_name = Column(String(50))
-    records_loaded = Column(BigInteger)
-    records_failed = Column(BigInteger)
-    execution_time_ms = Column(BigInteger)
-    status = Column(String(20))
-    error_message = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)

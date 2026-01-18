@@ -46,14 +46,30 @@ def search_by_indication(db, indication: str, limit: int = 5) -> List[Dict]:
     return [dict(row._mapping) for row in results]
 
 
+# Symptom-to-drug mapping for common symptoms
+SYMPTOM_DRUG_MAP = {
+    'headache': ['paracetamol', 'ibuprofen', 'aspirin'],
+    'head ache': ['paracetamol', 'ibuprofen'],
+    'pain': ['paracetamol', 'ibuprofen', 'diclofenac'],
+    'fever': ['paracetamol', 'ibuprofen'],
+    'cough': ['dextromethorphan', 'codeine'],
+    'cold': ['cetirizine', 'phenylephrine'],
+    'nausea': ['ondansetron', 'domperidone'],
+    'vomiting': ['ondansetron', 'domperidone'],
+    'diarrhea': ['loperamide', 'racecadotril'],
+    'constipation': ['bisacodyl', 'lactulose']
+}
+
 def get_drugs_for_symptoms(db, symptoms: List[str], diagnosis: str = "", icd_codes: List[str] = []) -> List[Dict]:
     """
     Get appropriate drugs based on symptoms, diagnosis, and ICD-10 codes
-    Priority: ICD-10 mapping > Symptom mapping > Fallback
+    Uses database indication field and generic name search
     """
     drugs = []
+    primary_drugs = []
+    symptom_drugs = []
     
-    # Try ICD-10 mapping first (most accurate)
+    # Try ICD-10 mapping first (most accurate) - for primary diagnosis
     if icd_codes:
         import yaml
         import os
@@ -63,15 +79,13 @@ def get_drugs_for_symptoms(db, symptoms: List[str], diagnosis: str = "", icd_cod
                 icd_config = yaml.safe_load(f)
                 
                 for icd_code in icd_codes:
-                    # Normalize: J20.9 -> J20
                     normalized = icd_code.replace(".", "")[:3]
                     if normalized in icd_config.get('icd_ingredient_mapping', {}):
                         mapping = icd_config['icd_ingredient_mapping'][normalized]
                         ingredients = mapping.get('ingredients', [])
                         logger.info(f"ICD {normalized} mapped to: {ingredients}")
                         
-                        # Search for these ingredients
-                        for ingredient in ingredients[:3]:
+                        for ingredient in ingredients[:2]:
                             query = text("""
                                 SELECT DISTINCT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
                                 FROM snomed_brands b
@@ -84,82 +98,78 @@ def get_drugs_for_symptoms(db, symptoms: List[str], diagnosis: str = "", icd_cod
                             """)
                             results = db.execute(query, {"ingredient": f"%{ingredient}%"}).fetchall()
                             for row in results:
-                                drugs.append(dict(row._mapping))
+                                primary_drugs.append(dict(row._mapping))
                         
-                        if drugs:
-                            break  # Found drugs via ICD mapping
+                        if primary_drugs:
+                            break
         except Exception as e:
             logger.warning(f"ICD mapping failed: {e}")
     
-    # Fallback to symptom mapping if no ICD results
-    
-    # Symptom to drug ingredient mapping (evidence-based, Mumbai high-volume complaints)
-    symptom_to_ingredient = {
-        # Pain & Fever (most common)
-        "pain": ["paracetamol", "ibuprofen", "diclofenac"],
-        "headache": ["paracetamol", "ibuprofen"],
-        "fever": ["paracetamol", "ibuprofen"],
-        "body ache": ["paracetamol", "ibuprofen"],
-        "back pain": ["diclofenac", "paracetamol"],
-        "joint pain": ["diclofenac", "ibuprofen"],
-        "toothache": ["ibuprofen", "paracetamol"],
-        
-        # Respiratory
-        "cough": ["dextromethorphan", "guaifenesin", "bromhexine", "ambroxol"],
-        "dry cough": ["dextromethorphan"],
-        "wet cough": ["guaifenesin", "ambroxol"],
-        "cold": ["cetirizine", "phenylephrine"],
-        "sore throat": ["paracetamol", "benzydamine"],
-        "nasal congestion": ["phenylephrine", "xylometazoline"],
-        
-        # Allergies
-        "allergy": ["cetirizine", "levocetirizine", "loratadine"],
-        "skin rash": ["cetirizine", "loratadine"],
-        "itching": ["cetirizine", "hydroxyzine"],
-        
-        # Gastrointestinal (very common in Mumbai)
-        "acidity": ["omeprazole", "pantoprazole", "rabeprazole"],
-        "heartburn": ["omeprazole", "ranitidine"],
-        "gastritis": ["pantoprazole", "sucralfate"],
-        "diarrhea": ["loperamide", "racecadotril"],
-        "loose motion": ["loperamide", "racecadotril"],
-        "constipation": ["ispaghula", "lactulose"],
-        "nausea": ["ondansetron", "domperidone"],
-        "vomiting": ["ondansetron", "domperidone"],
-        "indigestion": ["pantoprazole", "domperidone"],
-        
-        # Infections
-        "urinary infection": ["nitrofurantoin", "norfloxacin"],
-        "uti": ["nitrofurantoin", "ciprofloxacin"],
-        
-        # Metabolic (chronic conditions)
-        "diabetes": ["metformin", "glimepiride"],
-        "high blood pressure": ["amlodipine", "telmisartan"],
-        "hypertension": ["amlodipine", "atenolol"],
-    }
-    
-    # Search by ingredient name
-    for symptom in symptoms:
-        symptom_lower = symptom.lower()
-        for key, ingredients in symptom_to_ingredient.items():
-            if key in symptom_lower:
-                for ingredient in ingredients[:2]:  # Top 2 per symptom
+    # ALWAYS search for symptom-specific drugs (e.g., headache, pain)
+    if symptoms:
+        for symptom in symptoms:
+            symptom_lower = symptom.lower()
+            
+            # Try direct generic name search for mapped symptoms
+            if symptom_lower in SYMPTOM_DRUG_MAP:
+                for generic in SYMPTOM_DRUG_MAP[symptom_lower][:2]:
                     query = text("""
-                        SELECT DISTINCT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
+                        SELECT DISTINCT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name,
+                               g.indication, g.therapeutic_role
                         FROM snomed_brands b
                         JOIN snomed_generics g ON b.generic_id = g.snomed_id
                         LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                        WHERE LOWER(g.generic_name) LIKE :ingredient
+                        WHERE LOWER(g.generic_name) LIKE :generic
                           AND b.active = TRUE
                           AND b.route_of_administration = 'oral'
-                        LIMIT 2
+                        LIMIT 1
                     """)
-                    results = db.execute(query, {"ingredient": f"%{ingredient}%"}).fetchall()
+                    results = db.execute(query, {"generic": f"%{generic}%"}).fetchall()
                     for row in results:
-                        drugs.append(dict(row._mapping))
+                        symptom_drugs.append(dict(row._mapping))
                     if results:
-                        logger.info(f"Found {len(results)} drugs with ingredient: {ingredient}")
-                break
+                        logger.info(f"Found {len(results)} drugs for symptom '{symptom}' via generic '{generic}'")
+                        break
+            
+            # Fallback: search by indication/therapeutic role
+            if not symptom_drugs:
+                query = text("""
+                    SELECT DISTINCT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name,
+                           g.indication, g.therapeutic_role
+                    FROM snomed_brands b
+                    JOIN snomed_generics g ON b.generic_id = g.snomed_id
+                    LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
+                    WHERE (LOWER(g.indication) LIKE :term OR LOWER(g.therapeutic_role) LIKE :term)
+                      AND b.active = TRUE
+                      AND b.route_of_administration = 'oral'
+                    LIMIT 1
+                """)
+                results = db.execute(query, {"term": f"%{symptom_lower}%"}).fetchall()
+                for row in results:
+                    symptom_drugs.append(dict(row._mapping))
+                
+                if results:
+                    logger.info(f"Found {len(results)} drugs for symptom: {symptom}")
+    
+    # Combine: primary diagnosis drugs + symptom-specific drugs
+    drugs = primary_drugs + symptom_drugs
+    
+    # Fallback: search by diagnosis if no drugs found
+    if not drugs and diagnosis:
+        query = text("""
+            SELECT DISTINCT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name,
+                   g.indication, g.therapeutic_role
+            FROM snomed_brands b
+            JOIN snomed_generics g ON b.generic_id = g.snomed_id
+            LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
+            WHERE (LOWER(g.indication) LIKE :term OR LOWER(g.therapeutic_role) LIKE :term)
+              AND b.active = TRUE
+              AND b.route_of_administration = 'oral'
+            LIMIT 3
+        """)
+        results = db.execute(query, {"term": f"%{diagnosis.lower()}%"}).fetchall()
+        for row in results:
+            drugs.append(dict(row._mapping))
     
     # Remove duplicates
     seen = set()
@@ -169,4 +179,4 @@ def get_drugs_for_symptoms(db, symptoms: List[str], diagnosis: str = "", icd_cod
             seen.add(drug['snomed_id'])
             unique_drugs.append(drug)
     
-    return unique_drugs[:5]
+    return unique_drugs[:6]
