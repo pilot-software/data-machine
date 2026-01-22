@@ -200,38 +200,12 @@ Return ONLY the JSON object:"""
         }
         
         # Get drugs from database
-        raw_drugs = []
-        for generic in llm_analysis.get("generic_drugs", [])[:5]:
-            drug_names = []
-            if "(" in generic:
-                import re
-                matches = re.findall(r'\b([A-Z][a-z]+(?:cillin|mycin|floxacin|azole|prim|furantoin|cycline))\b', generic)
-                drug_names.extend([m.lower() for m in matches])
-            else:
-                drug_names.append(generic.lower())
-            
-            for drug_name in drug_names:
-                drugs = db.execute(text("""
-                    SELECT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
-                    FROM snomed_brands b
-                    JOIN snomed_generics g ON b.generic_id = g.snomed_id
-                    LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                    WHERE LOWER(g.generic_name) LIKE :generic 
-                      AND b.active = TRUE
-                      AND b.route_of_administration = 'oral'
-                    LIMIT 2
-                """), {"generic": f"%{drug_name}%"}).fetchall()
-                
-                for drug in drugs:
-                    raw_drugs.append({
-                        "snomed_id": drug.snomed_id,
-                        "brand_name": drug.brand_name,
-                        "generic_name": drug.generic_name,
-                        "supplier_name": drug.supplier_name
-                    })
-                
-                if drugs:
-                    break
+        symptoms = request.symptoms
+        diagnosis = llm_analysis.get("primary_diagnosis", "")
+        icd_codes = llm_analysis.get("icd10_codes", [])
+        llm_generic_drugs = llm_analysis.get("generic_drugs", [])
+        
+        raw_drugs = get_drugs_for_symptoms(db, symptoms, diagnosis, icd_codes, llm_generic_drugs)
         
         # Apply safety filters
         icd_codes = llm_analysis.get("icd10_codes", [])
@@ -349,41 +323,24 @@ Return ONLY JSON:"""
             "differential_diagnoses": llm_analysis.get("differential_diagnoses", [])
         }
         
-        # Get drugs from database using ICD-10 mapping (priority) or symptoms
+        # Get drugs from database using diagnosis and LLM suggestions
         symptoms = llm_analysis.get("extracted_symptoms", [])
         diagnosis = llm_analysis.get("primary_diagnosis", "")
         icd_codes = llm_analysis.get("icd10_codes", [])
+        llm_generic_drugs = llm_analysis.get("generic_drugs", [])
         
-        # Use SNOMED therapeutic data with ICD-10 priority
-        raw_drugs = get_drugs_for_symptoms(db, symptoms, diagnosis, icd_codes)
-        
-        if not raw_drugs:
-            # Fallback to generic name search
-            for generic in llm_analysis.get("generic_drugs", [])[:5]:
-                drugs = db.execute(text("""
-                    SELECT b.snomed_id, b.brand_name, g.generic_name, s.supplier_name
-                    FROM snomed_brands b
-                    JOIN snomed_generics g ON b.generic_id = g.snomed_id
-                    LEFT JOIN snomed_suppliers s ON b.supplier_id = s.snomed_id
-                    WHERE LOWER(g.generic_name) LIKE :generic 
-                      AND b.active = TRUE
-                      AND b.route_of_administration = 'oral'
-                    LIMIT 2
-                """), {"generic": f"%{generic.lower()}%"}).fetchall()
-                
-                for drug in drugs:
-                    raw_drugs.append({
-                        "snomed_id": drug.snomed_id,
-                        "brand_name": drug.brand_name,
-                        "generic_name": drug.generic_name,
-                        "supplier_name": drug.supplier_name
-                    })
+        # Use database search with LLM priority
+        raw_drugs = get_drugs_for_symptoms(db, symptoms, diagnosis, icd_codes, llm_generic_drugs)
         
         # Apply safety filters
         icd_codes = llm_analysis.get("icd10_codes", [])
         filtered_drugs, corrected_icd_codes, safety_results = safety_engine.apply_filters(
             raw_drugs, icd_codes, safety_context
         )
+        
+        # Add vague symptom warning
+        if not prompt or len(prompt.split()) < 5:
+            safety_results["warnings"].insert(0, "⚠️ INSUFFICIENT DATA: Vague symptoms. Consult physician before medication.")
         
         # RxNorm validation
         import re

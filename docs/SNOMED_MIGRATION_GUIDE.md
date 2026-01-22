@@ -56,7 +56,7 @@ Migrate from legacy drug database (114 brands) to SNOMED CT (89,447 brands) with
 ./scripts/setup_snomed.sh
 
 # Verify data
-psql -d hms_terminology -c "SELECT COUNT(*) FROM snomed_brands"
+psql -d medical_library -c "SELECT COUNT(*) FROM snomed_brands"
 ```
 
 ### Step 2: Update API Routes
@@ -399,7 +399,7 @@ VALUES (123, 2430421000189104, 'Crocin 500mg');
 ### During Migration
 - Monitor: `tail -f logs/app.log`
 - Check errors: `grep ERROR logs/app.log`
-- Database: `psql -d hms_terminology`
+- Database: `psql -d medical_library`
 
 ### After Migration
 - Performance: `GET /api/v1/snomed/stats`

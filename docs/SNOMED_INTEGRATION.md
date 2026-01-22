@@ -341,7 +341,7 @@ python3 scripts/etl/load_snomed_data.py
 ls -la CommonDrugCodesForIndia_FlatFilePackage/
 
 # Check database connection
-psql -h localhost -U postgres -d hms_terminology -c "SELECT 1"
+psql -h localhost -U postgres -d medical_library -c "SELECT 1"
 
 # Check logs
 tail -f logs/snomed_etl.log

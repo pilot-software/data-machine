@@ -53,7 +53,7 @@
 ./cleanup_db.sh
 
 # Or manually
-psql -U postgres -d hms_terminology -f scripts/cleanup_unused_tables.sql
+psql -U postgres -d medical_library -f scripts/cleanup_unused_tables.sql
 ```
 
 ## Rollback (if needed)

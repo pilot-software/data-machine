@@ -10,7 +10,7 @@ Integration of Ayushman Bharat Health Benefit Package (AB-HBP) procedure codes i
 
 ### 1. Database Setup
 ```bash
-psql -d hms_terminology -f scripts/setup_drug_db.sql
+psql -d medical_library -f scripts/setup_drug_db.sql
 ```
 
 ### 2. Download Data
