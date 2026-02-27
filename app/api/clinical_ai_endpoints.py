@@ -163,6 +163,11 @@ You MUST return ONLY a JSON object with this EXACT structure (no other text):
   "confidence": "high or medium or low",
   "reasoning": "why this diagnosis IN ENGLISH",
   "differential_diagnoses": ["alternative1 IN ENGLISH", "alternative2 IN ENGLISH"],
+  "non_pharmacologic_care": [
+    {{"intervention": "rest", "duration": "2-3 days", "rationale": "allows healing"}},
+    {{"intervention": "hydration", "duration": "ongoing", "rationale": "prevents dehydration"}}
+  ],
+  "lifestyle_modifications": ["avoid smoking", "increase fluids"],
   "recommended_tests": ["test1 IN ENGLISH", "test2 IN ENGLISH"],
   "red_flags": ["warning1 IN ENGLISH", "warning2 IN ENGLISH"],
   "generic_drugs": ["drug1 IN ENGLISH", "drug2 IN ENGLISH", "drug3 IN ENGLISH"]
@@ -172,6 +177,7 @@ IMPORTANT:
 - ALL TEXT MUST BE IN ENGLISH (translate if needed)
 - ICD codes: NO DOTS (write E11 not E.11, I10 not I.10)
 - Drugs: ONLY generic names in ENGLISH (metformin NOT मेटफॉर्मिन)
+- Non-pharmacologic care: ALWAYS recommend first-line interventions
 - Be specific based on the symptoms
 
 Return ONLY the JSON object:"""
@@ -245,6 +251,11 @@ Return ONLY the JSON object:"""
             "llm_provider": LLM_PROVIDER,
             "diagnosis_suggestions": diagnosis_suggestions,
             "differential_diagnoses": llm_analysis.get("differential_diagnoses", []),
+            "first_line_care": {
+                "non_pharmacologic": llm_analysis.get("non_pharmacologic_care", []),
+                "lifestyle_modifications": llm_analysis.get("lifestyle_modifications", []),
+                "note": "Try these interventions first before medications"
+            },
             "recommended_drugs": filtered_drugs,
             "additional_tests": llm_analysis.get("recommended_tests", []),
             "red_flags": llm_analysis.get("red_flags", []),
@@ -277,6 +288,7 @@ Patient complaint: "{prompt}"
 2. Diagnosis MUST match the extracted symptoms only
 3. Do NOT invent symptoms not mentioned
 4. Respond in English
+5. ALWAYS recommend non-pharmacologic care FIRST before medications
 
 ### OUTPUT SCHEMA:
 {{
@@ -284,6 +296,11 @@ Patient complaint: "{prompt}"
   "icd10_codes": ["CODE1", "CODE2"],
   "extracted_symptoms": ["symptom1", "symptom2"],
   "differential_diagnoses": ["alternative1", "alternative2"],
+  "non_pharmacologic_care": [
+    {{"intervention": "rest", "duration": "2-3 days", "rationale": "allows body to heal"}},
+    {{"intervention": "hydration", "duration": "ongoing", "rationale": "prevents dehydration"}}
+  ],
+  "lifestyle_modifications": ["avoid smoking", "increase fluid intake"],
   "generic_drugs": ["drug1", "drug2"],
   "red_flags": ["warning1", "warning2"],
   "clinical_rationale": "why these drugs for THIS diagnosis",
@@ -293,6 +310,7 @@ Patient complaint: "{prompt}"
 RULES:
 - ICD codes: NO DOTS (J06 not J.06)
 - Drugs: Generic names ONLY
+- Non-pharmacologic care: ALWAYS include first-line interventions
 
 Return ONLY JSON:"""
 
@@ -381,6 +399,11 @@ Return ONLY JSON:"""
             "llm_provider": LLM_PROVIDER,
             "diagnosis_suggestions": diagnosis_suggestions,
             "differential_diagnoses": llm_analysis.get("differential_diagnoses", []),
+            "first_line_care": {
+                "non_pharmacologic": llm_analysis.get("non_pharmacologic_care", []),
+                "lifestyle_modifications": llm_analysis.get("lifestyle_modifications", []),
+                "note": "Try these interventions first before medications"
+            },
             "recommended_drugs": filtered_drugs,
             "additional_tests": llm_analysis.get("recommended_tests", []),
             "red_flags": llm_analysis.get("red_flags", []),
